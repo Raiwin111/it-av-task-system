@@ -10,9 +10,10 @@ $layout_role = htmlspecialchars($_SESSION["role"] ?? "USER", ENT_QUOTES, "UTF-8"
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>บันทึกงาน | IT / AV Task Management System</title>
+    <title><?php echo htmlspecialchars($app_page_title ?? "บันทึกงาน | IT / AV Task Management System", ENT_QUOTES, "UTF-8"); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
     <style>
         :root { --navy: #0f172a; --blue: #1769c2; --page-bg: #f4f7fb; --sidebar-width: 260px; }
         body { color: #26394d; background: var(--page-bg); font-family: "Poppins", "Inter", "Segoe UI", sans-serif; }
@@ -25,6 +26,12 @@ $layout_role = htmlspecialchars($_SESSION["role"] ?? "USER", ENT_QUOTES, "UTF-8"
         .topbar + .app-shell { padding-top: 72px; }
         @media (min-width: 992px) { .desktop-sidebar { display: block !important; }.offcanvas-sidebar { display: none; }.main-content { margin-left: var(--sidebar-width); } }
         @media (max-width: 575.98px) { .topbar { height: 64px; }.topbar + .app-shell { padding-top: 64px; }.brand-title { font-size: .85rem; }.hide-mobile { display: none; }.main-content { padding: 1.5rem !important; }.form-card .card-header, .form-card .card-body { padding-left: 1rem !important; padding-right: 1rem !important; } }
+        /* Shared enterprise visual refinements. */
+        body { background: #eef2f7; font-size: 1.05rem; }
+        .topbar { background: linear-gradient(90deg, #0b1220, #111827); box-shadow: 0 4px 18px rgba(2, 6, 23, .42); }
+        .brand-title { color: #fff; font-size: 1.1rem; }.sidebar { background: linear-gradient(180deg, #111827, #0b1220); box-shadow: 4px 0 18px rgba(2, 6, 23, .24); }
+        .sidebar .nav-link { color: #d7e1ee; font-size: 1.05rem; transition: background .2s ease, color .2s ease, transform .2s ease; }.sidebar .nav-link i { color: #a9c8e8; }.sidebar .nav-link:hover { color: #fff; background: #1d3652; transform: translateX(2px); }.sidebar .nav-link.active { color: #fff; background: #23476d; box-shadow: inset 3px 0 0 #6cb5ff; }.sidebar-label { color: #9db5cf; font-size: .78rem; }
+        .profile-username { font-size: .95rem; }.role-badge { font-size: .78rem; box-shadow: 0 1px 0 rgba(255,255,255,.12) inset; }.form-card { background: #fbfcfe; border: 1px solid #d9e3ee; box-shadow: 0 8px 24px rgba(26, 57, 89, .10); }.form-card .card-header { background: #f7f9fc; border-bottom-color: #d9e3ee; }.section-title { font-size: 1.22rem; }.section-icon { box-shadow: 0 3px 9px rgba(23, 105, 194, .14); }.form-label { font-size: 1.02rem; }.form-control, .form-select { font-size: 1rem; border-color: #cbd8e6; background-color: #fff; }.form-text { font-size: .9rem; }.btn { font-size: 1rem; }.badge { font-size: .86rem; box-shadow: 0 1px 2px rgba(15, 23, 42, .10); }.table { font-size: 1rem; }.table thead th { font-size: .9rem; color: #52677f; background: #eef3f8; }
     </style>
 </head>
 <body>
