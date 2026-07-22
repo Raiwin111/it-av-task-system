@@ -37,6 +37,7 @@ $task_id = (int) ($_POST["task_id"] ?? $_GET["id"] ?? 0);
 $current_user_id = (int) ($_SESSION["user_id"] ?? 0);
 $current_role = strtoupper($_SESSION["role"] ?? "USER");
 $current_department = (string) ($_SESSION["department"] ?? "");
+$task_problem_options_csrf = $_SESSION["task_problem_options_csrf"] ??= bin2hex(random_bytes(32));
 $can_manage_all_tasks = in_array($current_role, ["SUPER", "ADMIN"], true);
 $can_select_department = $can_manage_all_tasks;
 $form_error = "";
@@ -99,6 +100,12 @@ if (($_SERVER["REQUEST_METHOD"] ?? "GET") === "POST") {
 
         if ($update_stmt->execute()) {
             $update_stmt->close();
+            if ($problem !== "-") {
+                $option_stmt = $conn->prepare("INSERT IGNORE INTO team_problem_options (department, problem_text, created_by) VALUES (?, ?, ?)");
+                $option_stmt->bind_param("ssi", $department, $problem, $current_user_id);
+                $option_stmt->execute();
+                $option_stmt->close();
+            }
             header("Location: edit.php?id=" . $task_id . "&updated=1");
             exit;
         }
@@ -260,4 +267,12 @@ require_once __DIR__ . "/../includes/app_header.php";
 
     locationSelect.addEventListener("change", updateOtherLocation);
 </script>
+<script>
+    window.taskProblemOptionsConfig = {
+        endpoint: 'problem_options.php',
+        csrfToken: <?php echo json_encode($task_problem_options_csrf); ?>,
+        defaultDepartment: <?php echo json_encode($task["department"]); ?>
+    };
+</script>
+<script src="problem_options.js?v=2"></script>
 <?php require_once __DIR__ . "/../includes/app_footer.php"; ?>

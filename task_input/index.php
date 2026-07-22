@@ -27,6 +27,7 @@ function combine_task_date_time(string $date_value, string $time_value): ?string
 
 $task_role = strtoupper($_SESSION["role"] ?? "USER");
 $task_department = $_SESSION["department"] ?? "";
+$task_problem_options_csrf = $_SESSION["task_problem_options_csrf"] ??= bin2hex(random_bytes(32));
 $can_select_department = in_array($task_role, ["SUPER", "ADMIN"], true);
 $form_error = "";
 $task_input_status_options = $task_status_options;
@@ -67,6 +68,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $stmt->bind_param("sssssssssssssi", $title, $category, $department, $responsible_name, $location, $work_description, $work_action, $problem, $solution, $status, $start_time, $finish_time, $remark, $created_by);
         if ($stmt->execute()) {
             $stmt->close();
+            if ($problem !== "-") {
+                $option_stmt = $conn->prepare("INSERT IGNORE INTO team_problem_options (department, problem_text, created_by) VALUES (?, ?, ?)");
+                $option_stmt->bind_param("ssi", $department, $problem, $created_by);
+                $option_stmt->execute();
+                $option_stmt->close();
+            }
             header("Location: index.php?saved=1");
             exit;
         }
@@ -235,4 +242,12 @@ $active_nav = "task_input";
 
     locationSelect.addEventListener("change", updateOtherLocation);
 </script>
+<script>
+    window.taskProblemOptionsConfig = {
+        endpoint: 'problem_options.php',
+        csrfToken: <?php echo json_encode($task_problem_options_csrf); ?>,
+        defaultDepartment: <?php echo json_encode($task_department); ?>
+    };
+</script>
+<script src="problem_options.js?v=2"></script>
 <?php require_once __DIR__ . "/../includes/app_footer.php"; ?>
