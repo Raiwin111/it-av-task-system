@@ -4,10 +4,22 @@
 session_start();
 require_once __DIR__ . "/../config/db.php";
 
-// A user who is already logged in can go straight to the dashboard.
+// A user who is already logged in can go straight to the dashboard only while active.
 if (isset($_SESSION["user_id"])) {
-    header("Location: ../dashboard/index.php");
-    exit;
+    $session_user_id = (int) $_SESSION["user_id"];
+    $session_status_stmt = $conn->prepare("SELECT is_enabled FROM users WHERE id = ? LIMIT 1");
+    $session_status_stmt->bind_param("i", $session_user_id);
+    $session_status_stmt->execute();
+    $session_user = $session_status_stmt->get_result()->fetch_assoc();
+    $session_status_stmt->close();
+
+    if ($session_user && (int) $session_user["is_enabled"] === 1) {
+        header("Location: ../dashboard/index.php");
+        exit;
+    }
+
+    $_SESSION = [];
+    session_destroy();
 }
 
 $message = "";
@@ -33,7 +45,7 @@ if (isset($_COOKIE["remember_me"])) {
         $expected_signature = hash_hmac("sha256", $cookie_data, $remember_me_secret);
 
         if (ctype_digit($remember_user_id) && ctype_digit($expires_at) && time() <= (int) $expires_at && hash_equals($expected_signature, $signature)) {
-            $remember_stmt = $conn->prepare("SELECT id, username, department, role FROM users WHERE id = ? LIMIT 1");
+            $remember_stmt = $conn->prepare("SELECT id, username, department, role FROM users WHERE id = ? AND is_enabled = 1 LIMIT 1");
             $remember_stmt->bind_param("i", $remember_user_id);
             $remember_stmt->execute();
             $remember_user = $remember_stmt->get_result()->fetch_assoc();
@@ -77,7 +89,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $message === "") {
     $password = $_POST["password"] ?? "";
 
     // Prepared statements keep submitted values out of the SQL command itself.
-    $stmt = $conn->prepare("SELECT id, username, password, department, role FROM users WHERE username = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT id, username, password, department, role, is_enabled FROM users WHERE username = ? LIMIT 1");
     $stmt->bind_param("s", $username);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -85,7 +97,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $message === "") {
     $stmt->close();
 
     // password_verify compares the submitted password with password_hash data.
-    if ($user && password_verify($password, $user["password"])) {
+    if ($user && (int) $user["is_enabled"] === 1 && password_verify($password, $user["password"])) {
         // Prevent session fixation by changing the session ID after login.
         session_regenerate_id(true);
 

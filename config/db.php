@@ -4,7 +4,7 @@
 $db_host = "localhost";
 $db_user = "root";
 $db_pass = "";
-$db_name = "av_it_task_system";
+$db_name = "it-av-task-system";
 
 // Change this long, private value before using the system in production.
 // It signs the Remember Me cookie, so the cookie cannot be changed by a user.
