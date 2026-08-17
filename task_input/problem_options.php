@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . "/../auth/auth_check.php";
+require_once __DIR__ . "/../auth/authorization.php";
 require_once __DIR__ . "/../config/db.php";
 require_once __DIR__ . "/../config/constants.php";
 
@@ -21,13 +22,17 @@ function problem_options_response(int $status, array $data): never
 
 function requested_problem_department(array $departments, string $role, string $session_department): string
 {
-    $department = (string) ($_REQUEST["department"] ?? $session_department);
+    $requested_department = $_REQUEST["department"] ?? $session_department;
+    $department = is_string($requested_department) ? $requested_department : "";
     if (!in_array($department, $departments, true)) problem_options_response(422, ["message" => "ทีมไม่ถูกต้อง"]);
     if ($role === "USER" && $department !== $session_department) problem_options_response(403, ["message" => "คุณไม่มีสิทธิ์จัดการรายการของทีมนี้"]);
     return $department;
 }
 
 if (($_SERVER["REQUEST_METHOD"] ?? "GET") === "GET") {
+    if (!is_account_approved()) {
+        problem_options_response(200, ["options" => []]);
+    }
     $department = requested_problem_department($departments, $role, $session_department);
     $stmt = $conn->prepare("SELECT id, problem_text FROM team_problem_options WHERE department = ? ORDER BY problem_text ASC, id ASC");
     $stmt->bind_param("s", $department);
@@ -37,15 +42,19 @@ if (($_SERVER["REQUEST_METHOD"] ?? "GET") === "GET") {
     problem_options_response(200, ["options" => $options]);
 }
 
-if (!hash_equals($_SESSION["task_problem_options_csrf"], $_POST["csrf_token"] ?? "")) {
+$submitted_csrf = is_string($_POST["csrf_token"] ?? null) ? $_POST["csrf_token"] : "";
+if (!hash_equals($_SESSION["task_problem_options_csrf"], $submitted_csrf)) {
     problem_options_response(403, ["message" => "ไม่สามารถยืนยันคำขอได้"]);
+}
+if (!is_account_approved()) {
+    problem_options_response(403, ["message" => "บัญชีนี้ยังไม่มีสิทธิ์แก้ไขข้อมูล"]);
 }
 
 $department = requested_problem_department($departments, $role, $session_department);
-$action = $_POST["action"] ?? "";
+$action = is_string($_POST["action"] ?? null) ? $_POST["action"] : "";
 
 if ($action === "add") {
-    $problem_text = trim((string) ($_POST["problem_text"] ?? ""));
+    $problem_text = is_string($_POST["problem_text"] ?? null) ? trim($_POST["problem_text"]) : "";
     if ($problem_text === "" || $problem_text === "-" || mb_strlen($problem_text) > 255) {
         problem_options_response(422, ["message" => "ข้อความปัญหาไม่ถูกต้อง"]);
     }
@@ -59,7 +68,8 @@ if ($action === "add") {
 }
 
 if ($action === "delete") {
-    $id = (int) ($_POST["id"] ?? 0);
+    $id_value = $_POST["id"] ?? 0;
+    $id = is_scalar($id_value) ? (int) $id_value : 0;
     if ($id <= 0) problem_options_response(422, ["message" => "ไม่พบรายการที่ต้องการลบ"]);
 
     $stmt = $conn->prepare("DELETE FROM team_problem_options WHERE id = ? AND department = ?");

@@ -1,6 +1,6 @@
 (() => {
     const config = window.taskProblemOptionsConfig;
-    const problemInput = document.querySelector('input[name="problem"]');
+    const problemInput = document.querySelector('input[name="problem"], textarea[name="problem"]');
     if (!config || !problemInput) return;
 
     const problemField = problemInput.closest('.col-md-6, .col-12');
@@ -8,13 +8,14 @@
     if (!problemField || !departmentControl) return;
 
     const choiceWrapper = document.createElement('div');
-    choiceWrapper.className = 'position-relative';
+    choiceWrapper.className = 'position-relative task-problem-choice';
     problemInput.before(choiceWrapper);
     choiceWrapper.append(problemInput);
 
     const choiceMenu = document.createElement('div');
-    choiceMenu.className = 'list-group position-absolute top-100 start-0 w-100 mt-1 shadow-sm d-none';
+    choiceMenu.className = 'list-group position-absolute top-100 start-0 w-100 mt-1 shadow-sm d-none task-problem-choice-menu';
     choiceMenu.style.zIndex = '1050';
+    choiceMenu.setAttribute('role', 'listbox');
     choiceWrapper.append(choiceMenu);
 
     const helpText = document.createElement('div');

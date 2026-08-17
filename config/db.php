@@ -1,22 +1,22 @@
 <?php
-// This file creates one reusable connection to the MySQL database.
+// Load machine-local database credentials without committing them to Git.
+$local_database_config = __DIR__ . "/db.local.php";
 
-$db_host = "localhost";
-$db_user = "root";
-$db_pass = "";
-$db_name = "it-av-task-system";
-
-// Change this long, private value before using the system in production.
-// It signs the Remember Me cookie, so the cookie cannot be changed by a user.
-$remember_me_secret = "4f7bd8cf9bd049ae9e25d7422519939149da2ee805ce85913b4051e5b7a14ac2";
-
-$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
-
-// Stop the current page with a simple message if MySQL cannot be reached.
-if ($conn->connect_error) {
-    die("Database connection failed: " . $conn->connect_error);
+if (!is_file($local_database_config)) {
+    error_log("Missing local database configuration: " . $local_database_config);
+    http_response_code(503);
+    exit("ระบบไม่พร้อมให้บริการชั่วคราว กรุณาติดต่อผู้ดูแลระบบ");
 }
 
-// Use UTF-8 so Thai and other international text is stored correctly.
-$conn->set_charset("utf8mb4");
+require $local_database_config;
+
+if (!isset($conn) || !($conn instanceof mysqli)) {
+    error_log("Local database configuration did not create a mysqli connection.");
+    http_response_code(503);
+    exit("ระบบไม่พร้อมให้บริการชั่วคราว กรุณาติดต่อผู้ดูแลระบบ");
+}
+
+// Keep application timestamps and MySQL NOW()/CURRENT_TIMESTAMP aligned.
+date_default_timezone_set("Asia/Bangkok");
+$conn->query("SET time_zone = '+07:00'");
 ?>

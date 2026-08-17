@@ -1,0 +1,3 @@
+<FilesMatch "(^\.|^db\.php$|\.local\.php$|\.example\.php$|\.sql$)">
+    Require all denied
+</FilesMatch>

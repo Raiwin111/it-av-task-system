@@ -1,24 +1,32 @@
 <?php
 // This page removes all login data and returns the user to the login page.
 
-session_start();
+require_once __DIR__ . "/session.php";
+start_secure_session();
+
+if (($_SERVER["REQUEST_METHOD"] ?? "GET") !== "POST") {
+    http_response_code(405);
+    header("Allow: POST");
+    exit("Method Not Allowed");
+}
+
+$submitted_token = is_string($_POST["csrf_token"] ?? null) ? $_POST["csrf_token"] : "";
+$session_token = is_string($_SESSION["logout_csrf_token"] ?? null) ? $_SESSION["logout_csrf_token"] : "";
+if ($session_token === "" || !hash_equals($session_token, $submitted_token)) {
+    http_response_code(419);
+    exit("คำขอออกจากระบบหมดอายุ กรุณาลองใหม่อีกครั้ง");
+}
+
+require_once __DIR__ . "/../config/db.php";
+require_once __DIR__ . "/remember_tokens.php";
+delete_remember_token_from_cookie($conn);
 $_SESSION = [];
 
-// Also remove the signed Remember Me cookie so this browser stays logged out.
-$is_https = !empty($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] !== "off";
-setcookie("remember_me", "", [
-    "expires" => time() - 3600,
-    "path" => "/",
-    "secure" => $is_https,
-    "httponly" => true,
-    "samesite" => "Lax"
-]);
+// Also remove the revocable Remember Me cookie so this browser stays logged out.
+expire_remember_cookie();
 
 // Remove the session cookie too, when PHP is using cookies for sessions.
-if (ini_get("session.use_cookies")) {
-    $cookie_params = session_get_cookie_params();
-    setcookie(session_name(), "", time() - 42000, $cookie_params["path"], $cookie_params["domain"], $cookie_params["secure"], $cookie_params["httponly"]);
-}
+expire_session_cookie();
 
 session_destroy();
 header("Location: login.php");

@@ -1,0 +1,413 @@
+.task-input-page {
+    max-width: 1680px;
+}
+
+/* A closed Flatpickr popup can retain its previous desktop position during a
+   responsive resize; removing it from layout prevents transient page overflow. */
+.flatpickr-calendar:not(.open) {
+    display: none !important;
+}
+
+.task-form-guide {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid #d9e3ee;
+    border-radius: .9rem;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(26, 57, 89, .08);
+}
+
+.task-form-guide-two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.task-auto-status {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    gap: .75rem;
+    padding: .55rem .75rem;
+    border: 1px solid #c9d9e7;
+    border-radius: .65rem;
+    background: #f5f9fc;
+}
+
+.task-auto-status small {
+    color: #5f7387;
+    line-height: 1.35;
+}
+
+.task-guide-item {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: .75rem;
+    padding: .85rem 1rem;
+}
+
+.task-guide-item:not(:last-child)::after {
+    position: absolute;
+    top: 20%;
+    right: 0;
+    width: 1px;
+    height: 60%;
+    background: #e0e8f0;
+    content: "";
+}
+
+.task-guide-item > span {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    align-items: center;
+    justify-content: center;
+    color: #49627a;
+    border-radius: 50%;
+    background: #edf2f7;
+    font-weight: 700;
+}
+
+.task-guide-item.active > span {
+    color: #fff;
+    background: #1769c2;
+    box-shadow: 0 4px 12px rgba(23, 105, 194, .22);
+}
+
+.task-guide-item strong,
+.task-guide-item small {
+    display: block;
+}
+
+.task-guide-item strong {
+    color: #223c55;
+    font-size: .95rem;
+}
+
+.task-guide-item small {
+    overflow: hidden;
+    color: #728399;
+    font-size: .78rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-section-card {
+    overflow: visible;
+}
+
+.task-section-card .card-header {
+    min-height: 78px;
+}
+
+.task-section-card textarea {
+    line-height: 1.6;
+}
+
+.task-section-card .form-control:not(textarea),
+.task-section-card .form-select {
+    min-height: 44px;
+}
+
+.task-section-card .form-label {
+    margin-bottom: .45rem;
+    color: #29445e;
+    font-weight: 600;
+}
+
+.task-autocomplete {
+    position: relative;
+}
+
+.task-suggestion-menu {
+    position: absolute;
+    z-index: 1060;
+    top: calc(100% + .35rem);
+    right: 0;
+    left: 0;
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid #cbd8e6;
+    border-radius: .65rem;
+    background: #fff;
+    box-shadow: 0 12px 28px rgba(26, 57, 89, .16);
+}
+
+.task-suggestion-option {
+    display: block;
+    width: 100%;
+    padding: .65rem .8rem;
+    overflow-wrap: anywhere;
+    color: #304a63;
+    border: 0;
+    border-bottom: 1px solid #edf1f5;
+    background: #fff;
+    text-align: left;
+}
+
+.task-suggestion-option:last-child {
+    border-bottom: 0;
+}
+
+.task-suggestion-option:hover,
+.task-suggestion-option:focus,
+.task-suggestion-option.active {
+    color: #174f84;
+    outline: 0;
+    background: #edf5fd;
+}
+
+.task-problem-choice-menu {
+    max-height: 260px;
+    overflow-y: auto;
+    border-color: #cbd8e6;
+    border-radius: .65rem;
+}
+
+.task-optional-label {
+    display: inline-flex;
+    align-items: center;
+    margin-left: .35rem;
+    padding: .12rem .42rem;
+    color: #64748b;
+    border-radius: 999px;
+    background: #eef2f6;
+    font-size: .7rem;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.task-equipment-guide {
+    padding: .85rem 1rem;
+    color: #405970;
+    border-left: 3px solid #7aa8d3;
+    border-radius: .4rem;
+    background: #f4f8fc;
+    font-size: .86rem;
+}
+
+.task-equipment-guide > div:first-child {
+    color: #234a70;
+}
+
+.task-equipment-examples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem .55rem;
+    margin-top: .6rem;
+}
+
+.task-equipment-examples span {
+    padding: .24rem .52rem;
+    color: #5b6f83;
+    border: 1px solid #d8e3ed;
+    border-radius: 999px;
+    background: #fff;
+    font-size: .76rem;
+}
+
+.task-section-divider {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    color: #6b7d90;
+    font-size: .82rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+}
+
+.task-section-divider::before,
+.task-section-divider::after {
+    height: 1px;
+    flex: 1 1 auto;
+    background: #dde6ef;
+    content: "";
+}
+
+.task-section-divider span {
+    flex: 0 0 auto;
+}
+
+.task-side-column {
+    position: sticky;
+    top: 92px;
+}
+
+.task-file-drop {
+    display: flex;
+    min-height: 142px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: .3rem;
+    padding: 1rem;
+    color: #49627a;
+    border: 2px dashed #b8cadc;
+    border-radius: .8rem;
+    background: #f7fafc;
+    text-align: center;
+    transition: border-color .18s ease, background .18s ease, color .18s ease;
+}
+
+.task-file-drop:hover,
+.task-file-drop:focus-within {
+    color: #1769c2;
+    border-color: #68a2d9;
+    background: #eef6fd;
+}
+
+.task-file-drop i {
+    font-size: 2rem;
+}
+
+.task-file-drop span {
+    color: #7c8da0;
+    font-size: .78rem;
+}
+
+.task-image-preview-item {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #d9e3ee;
+    border-radius: .65rem;
+    background: #fff;
+}
+
+.task-image-preview-item img {
+    display: block;
+    width: 100%;
+    height: 84px;
+    object-fit: cover;
+}
+
+.task-image-preview-item span {
+    display: block;
+    overflow: hidden;
+    padding: .35rem .45rem;
+    color: #60758a;
+    font-size: .7rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-existing-image {
+    display: block;
+    overflow: hidden;
+    color: #50677e;
+    border: 1px solid #d9e3ee;
+    border-radius: .65rem;
+    background: #fff;
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+.task-existing-image:hover,
+.task-existing-image:focus {
+    color: #1769c2;
+    border-color: #8eb6db;
+    box-shadow: 0 5px 15px rgba(26, 57, 89, .12);
+}
+
+.task-existing-image img {
+    display: block;
+    width: 100%;
+    height: 90px;
+    object-fit: cover;
+}
+
+.task-existing-image span {
+    display: block;
+    overflow: hidden;
+    padding: .4rem .5rem;
+    font-size: .72rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-submit-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    border: 1px solid #cfdce9;
+    border-radius: .9rem;
+    background: rgba(255, 255, 255, .96);
+    box-shadow: 0 -5px 24px rgba(26, 57, 89, .12);
+    backdrop-filter: blur(8px);
+}
+
+.task-submit-bar strong {
+    color: #29445e;
+}
+
+.task-submit-bar .btn {
+    min-height: 44px;
+}
+
+@media (max-width: 1199.98px) {
+    .task-side-column {
+        position: static;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .task-form-guide {
+        grid-template-columns: 1fr;
+    }
+
+    .task-guide-item {
+        padding: .7rem .85rem;
+    }
+
+    .task-guide-item:not(:last-child)::after {
+        top: auto;
+        right: 1rem;
+        bottom: 0;
+        left: 1rem;
+        width: auto;
+        height: 1px;
+    }
+
+    .task-guide-item small {
+        white-space: normal;
+    }
+
+    .task-submit-bar {
+        position: static;
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .task-input-page {
+        padding: 1rem !important;
+    }
+
+    .task-page-heading {
+        margin-bottom: 1rem !important;
+    }
+
+    .task-section-card .card-header {
+        min-height: 0;
+    }
+
+    .task-equipment-examples {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .task-submit-bar {
+        padding: .9rem;
+    }
+
+    .task-submit-bar .btn {
+        width: 100%;
+    }
+}

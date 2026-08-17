@@ -35,20 +35,5 @@
             flatpickr('.time-picker', { locale: flatpickr.l10ns.th, allowInput: true, enableTime: true, noCalendar: true, time_24hr: true, dateFormat: 'H:i' });
         })();
     </script>
-    <script>
-        document.querySelectorAll('.sidebar .nav-link').forEach((link) => {
-            if (link.textContent.trim() === 'คู่มือ') link.remove();
-        });
-
-        document.querySelectorAll('.topbar form[action*="logout.php"]').forEach((logoutForm) => {
-            if (logoutForm.parentElement?.querySelector('.navbar-help-link')) return;
-            const guideLink = document.createElement('a');
-            guideLink.href = '../help/';
-            guideLink.className = 'navbar-help-link d-inline-flex align-items-center px-1 text-decoration-none text-white';
-            guideLink.setAttribute('aria-label', 'เปิดคู่มือการใช้งาน');
-            guideLink.innerHTML = '<i class="bi bi-question-circle me-1"></i><span class="hide-mobile">คู่มือ</span>';
-            logoutForm.before(guideLink);
-        });
-    </script>
 </body>
 </html>
