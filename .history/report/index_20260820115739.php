@@ -10,7 +10,7 @@ require_once __DIR__ . "/../includes/task_activity.php";
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Pragma: no-cache");
 
-$app_page_title = "Report | IT / AV Task Management System";
+$app_page_title = "รายการงาน | IT / AV Task Management System";
 $role = strtoupper($_SESSION["role"] ?? "USER");
 $user_id = (int) ($_SESSION["user_id"] ?? 0);
 $can_control_task_status = can_manage_all_tasks();
@@ -514,23 +514,25 @@ $selected_task = null;
 foreach ($task_rows as $task) if ((int) $task["id"] === $edit_id) $selected_task = $task;
 require_once __DIR__ . "/../includes/app_header.php";
 ?>
-<div class="app-shell d-flex"><?php require_once __DIR__ . "/../includes/app_sidebar.php"; ?><main class="report-page main-content flex-grow-1 p-4 p-lg-5"><?php if (isset($_GET["updated"])): ?><div class="alert alert-success"><i class="bi bi-check-circle-fill me-2"></i>บันทึกการแก้ไขเรียบร้อยแล้ว</div><?php endif; ?><?php if (isset($_GET["deleted"])): ?><div class="alert alert-success">ลบงานเรียบร้อยแล้ว</div><?php endif; ?><?php if (($_GET["error"] ?? "") === "forbidden"): ?><div class="alert alert-danger">คุณไม่มีสิทธิ์ดำเนินการกับงานนี้</div><?php endif; ?><?php if (($_GET["error"] ?? "") === "csrf"): ?><div class="alert alert-danger">คำขอลบหมดอายุ กรุณาลองใหม่อีกครั้ง</div><?php endif; ?><?php if (!$account_can_modify): ?><div class="alert alert-info"><i class="bi bi-shield-lock me-1"></i>บัญชีอยู่ระหว่างรอผู้ดูแลกำหนดทีมและสิทธิ์ จึงยังไม่สามารถดูข้อมูลงานได้</div><?php endif; ?><?php if ($report_update_error !== ""): ?><div class="alert alert-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i><?php echo htmlspecialchars($report_update_error, ENT_QUOTES, "UTF-8"); ?></div><?php endif; ?><div class="d-flex flex-column flex-lg-row align-items-lg-end justify-content-between gap-3 mb-4"><div><h1 class="page-heading h3 fw-bold mb-1">Report</h1><p class="page-subtitle mb-0">Task List สำหรับค้นหา ติดตาม และจัดการงาน IT / AV</p></div><a class="btn btn-primary align-self-start align-self-lg-auto" href="../task_input/"><i class="bi bi-plus-lg me-2"></i>บันทึกงานใหม่</a></div>
+<div class="app-shell d-flex"><?php require_once __DIR__ . "/../includes/app_sidebar.php"; ?><main class="report-page main-content flex-grow-1 p-4 p-lg-5"><?php if (isset($_GET["updated"])): ?><div class="alert alert-success"><i class="bi bi-check-circle-fill me-2"></i>บันทึกการแก้ไขเรียบร้อยแล้ว</div><?php endif; ?><?php if (isset($_GET["deleted"])): ?><div class="alert alert-success">ลบงานเรียบร้อยแล้ว</div><?php endif; ?><?php if (($_GET["error"] ?? "") === "forbidden"): ?><div class="alert alert-danger">คุณไม่มีสิทธิ์ดำเนินการกับงานนี้</div><?php endif; ?><?php if (($_GET["error"] ?? "") === "csrf"): ?><div class="alert alert-danger">คำขอลบหมดอายุ กรุณาลองใหม่อีกครั้ง</div><?php endif; ?><?php if (!$account_can_modify): ?><div class="alert alert-info"><i class="bi bi-shield-lock me-1"></i>บัญชีอยู่ระหว่างรอผู้ดูแลกำหนดทีมและสิทธิ์ จึงยังไม่สามารถดูข้อมูลงานได้</div><?php endif; ?><?php if ($report_update_error !== ""): ?><div class="alert alert-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i><?php echo htmlspecialchars($report_update_error, ENT_QUOTES, "UTF-8"); ?></div><?php endif; ?><div class="d-flex flex-column flex-lg-row align-items-lg-end justify-content-between gap-3 mb-4"><div><h1 class="page-heading h3 fw-bold mb-1">รายการงาน</h1><p class="page-subtitle mb-0">Task List สำหรับค้นหา ติดตาม และจัดการงาน IT / AV</p></div><a class="btn btn-primary align-self-start align-self-lg-auto" href="../task_input/"><i class="bi bi-plus-lg me-2"></i>บันทึกงานใหม่</a></div>
 <?php if ($report_filter_error !== ""): ?><div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i><?php echo htmlspecialchars($report_filter_error, ENT_QUOTES, "UTF-8"); ?></div><?php endif; ?>
-<?php if ($report_can_filter_team): ?>
 <section class="report-toolbar mb-4" aria-label="เลือกทีม">
     <div class="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-3">
         <div>
             <div class="small fw-bold text-muted mb-2">เลือกทีม</div>
-            <nav class="report-team-switch" aria-label="เลือกทีมใน Report">
+            <nav class="report-team-switch" aria-label="เลือกทีมในรายการงาน">
+                <?php if ($report_can_filter_team): ?>
                     <a class="report-team-link<?php echo $report_filter_department === "" ? " active" : ""; ?>" href="<?php echo htmlspecialchars($report_team_url(""), ENT_QUOTES, "UTF-8"); ?>"><i class="bi bi-grid"></i>ทุกทีม</a>
                     <?php foreach ($departments as $department_option): ?>
                         <a class="report-team-link<?php echo $report_filter_department === $department_option ? " active" : ""; ?>" href="<?php echo htmlspecialchars($report_team_url($department_option), ENT_QUOTES, "UTF-8"); ?>"><i class="bi <?php echo $department_option === "IT" ? "bi-pc-display" : "bi-camera-video"; ?>"></i><?php echo htmlspecialchars($department_option, ENT_QUOTES, "UTF-8"); ?></a>
                     <?php endforeach; ?>
+                <?php else: ?>
+                    <span class="report-team-link active"><i class="bi bi-people"></i>ทีม <?php echo htmlspecialchars($report_department, ENT_QUOTES, "UTF-8"); ?></span>
+                <?php endif; ?>
             </nav>
         </div>
     </div>
 </section>
-<?php endif; ?>
 <section class="row g-4 mb-4"><div class="col-sm-6 col-xl-3"><article class="card form-card h-100"><div class="card-body d-flex align-items-center"><span class="report-kpi-icon report-kpi-total d-inline-flex align-items-center justify-content-center me-3"><i class="bi bi-card-checklist"></i></span><div><div class="text-muted small fw-semibold">งานทั้งหมด</div><div class="page-heading h3 fw-bold mb-0"><?php echo $counts["total"]; ?></div></div></div></article></div><div class="col-sm-6 col-xl-3"><article class="card form-card h-100"><div class="card-body d-flex align-items-center"><span class="report-kpi-icon report-kpi-pending d-inline-flex align-items-center justify-content-center me-3"><i class="bi bi-hourglass-split"></i></span><div><div class="text-muted small fw-semibold">รอดำเนินการ</div><div class="page-heading h3 fw-bold mb-0"><?php echo $counts["pending"]; ?></div></div></div></article></div><div class="col-sm-6 col-xl-3"><article class="card form-card h-100"><div class="card-body d-flex align-items-center"><span class="report-kpi-icon report-kpi-progress d-inline-flex align-items-center justify-content-center me-3"><i class="bi bi-tools"></i></span><div><div class="text-muted small fw-semibold">กำลังดำเนินการ</div><div class="page-heading h3 fw-bold mb-0"><?php echo $counts["in_progress"]; ?></div></div></div></article></div><div class="col-sm-6 col-xl-3"><article class="card form-card h-100"><div class="card-body d-flex align-items-center"><span class="report-kpi-icon report-kpi-completed d-inline-flex align-items-center justify-content-center me-3"><i class="bi bi-check-circle-fill"></i></span><div><div class="text-muted small fw-semibold">เสร็จสิ้น</div><div class="page-heading h3 fw-bold mb-0"><?php echo $counts["completed"]; ?></div></div></div></article></div></section>
 <section class="card form-card report-list-card">
     <div class="card-header report-list-header d-flex align-items-start justify-content-between gap-3">
@@ -587,7 +589,7 @@ require_once __DIR__ . "/../includes/app_header.php";
                         <td class="report-mobile-hidden"><span class="badge text-bg-light border"><?php echo htmlspecialchars($task["department"], ENT_QUOTES, "UTF-8"); ?></span></td>
                         <td><span class="badge rounded-pill <?php echo $class; ?>"><?php echo $label; ?></span></td>
                         <td class="report-mobile-hidden"><?php echo htmlspecialchars($task["created_by_name"], ENT_QUOTES, "UTF-8"); ?></td>
-                        <td class="pe-4 text-end"><div class="report-row-actions d-inline-flex gap-1"><button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#taskModal<?php echo $task["id"]; ?>" aria-label="ดูรายละเอียด <?php echo htmlspecialchars($task["title"], ENT_QUOTES, "UTF-8"); ?>"><i class="bi bi-eye"></i><span class="action-label ms-1">รายละเอียด</span></button><?php if ($can_edit): ?><button class="btn btn-sm btn-outline-secondary report-edit-task" type="button" data-bs-toggle="modal" data-bs-target="#reportEditTaskModal" data-edit-task-id="<?php echo $task["id"]; ?>" aria-controls="reportEditTaskModal" aria-label="แก้ไข <?php echo htmlspecialchars($task["title"], ENT_QUOTES, "UTF-8"); ?>"><i class="bi bi-pencil"></i><span class="action-label ms-1">แก้ไข</span></button><?php endif; ?><?php if ($can_delete): ?><button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteTaskModal<?php echo $task["id"]; ?>" aria-label="ลบ <?php echo htmlspecialchars($task["title"], ENT_QUOTES, "UTF-8"); ?>"><i class="bi bi-trash"></i><span class="action-label ms-1">ลบ</span></button><?php endif; ?></div></td>
+                        <td class="pe-4 text-end"><div class="report-row-actions d-inline-flex gap-1"><button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#taskModal<?php echo $task["id"]; ?>" aria-label="ดูรายละเอียด <?php echo htmlspecialchars($task["title"], ENT_QUOTES, "UTF-8"); ?>"><i class="bi bi-eye"></i><span class="action-label ms-1">รายละเอียด</span></button><?php if ($can_edit): ?><button class="btn btn-sm btn-outline-secondary report-edit-task" type="button" data-edit-task-id="<?php echo $task["id"]; ?>" aria-label="แก้ไข <?php echo htmlspecialchars($task["title"], ENT_QUOTES, "UTF-8"); ?>"><i class="bi bi-pencil"></i><span class="action-label ms-1">แก้ไข</span></button><?php endif; ?><?php if ($can_delete): ?><button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteTaskModal<?php echo $task["id"]; ?>" aria-label="ลบ <?php echo htmlspecialchars($task["title"], ENT_QUOTES, "UTF-8"); ?>"><i class="bi bi-trash"></i><span class="action-label ms-1">ลบ</span></button><?php endif; ?></div></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -617,18 +619,15 @@ require_once __DIR__ . "/../includes/app_header.php";
                 <input type="hidden" name="task_id" id="reportEditTaskId">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($report_task_csrf, ENT_QUOTES, "UTF-8"); ?>">
                 <div class="modal-header">
-                    <div class="report-edit-heading-wrap d-flex align-items-center gap-3">
-                        <span class="report-edit-title-icon d-inline-flex align-items-center justify-content-center" aria-hidden="true"><i class="bi bi-pencil-square"></i></span>
-                        <div>
-                            <h2 class="modal-title fs-5" id="reportEditTaskModalLabel">แก้ไขงาน</h2>
-                            <p class="small text-muted mb-0" id="reportEditTaskSubtitle">เลือกงานที่ต้องการแก้ไข</p>
-                        </div>
+                    <div>
+                        <h2 class="modal-title fs-5" id="reportEditTaskModalLabel"><i class="bi bi-pencil-square me-2"></i>แก้ไขงาน</h2>
+                        <p class="small text-muted mb-0" id="reportEditTaskSubtitle">เลือกงานที่ต้องการแก้ไข</p>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
                 </div>
                 <div class="modal-body">
-                    <section class="report-edit-section report-edit-section--primary">
-                        <h3 class="report-edit-section-heading"><i class="bi bi-card-checklist"></i>ข้อมูลงาน</h3>
+                    <section class="report-edit-section">
+                        <h3 class="h6 fw-bold mb-3"><i class="bi bi-card-checklist me-2"></i>ข้อมูลงาน</h3>
                         <div class="row g-3">
                             <div class="col-lg-8"><label class="form-label" for="reportEditTitle">ชื่องาน <span class="text-danger">*</span></label><input type="text" class="form-control" id="reportEditTitle" name="title" required></div>
                             <div class="col-lg-4">
@@ -647,19 +646,19 @@ require_once __DIR__ . "/../includes/app_header.php";
                             <div class="col-md-6" id="reportEditCategoryGroup"><label class="form-label" for="reportEditCategory">ประเภทปัญหา</label><select class="form-select" id="reportEditCategory" name="category"><option value="-">ไม่ระบุ</option><?php foreach ($problem_category_options as $category_value => $category_label): ?><option value="<?php echo htmlspecialchars($category_value, ENT_QUOTES, "UTF-8"); ?>"><?php echo htmlspecialchars($category_label, ENT_QUOTES, "UTF-8"); ?></option><?php endforeach; ?></select></div>
                         </div>
                     </section>
-                    <section class="report-edit-section report-edit-section--details">
-                        <h3 class="report-edit-section-heading" id="reportEditDetailHeading"><i class="bi bi-file-earmark-text"></i>รายละเอียดและการดำเนินงาน</h3>
+                    <section class="report-edit-section">
+                        <h3 class="h6 fw-bold mb-3" id="reportEditDetailHeading"><i class="bi bi-file-earmark-text me-2"></i>รายละเอียดและการดำเนินงาน</h3>
                         <div class="row g-3">
                             <div class="col-md-6" id="reportEditWorkDescriptionGroup"><label class="form-label" for="reportEditWorkDescription" id="reportEditWorkDescriptionLabel">รายละเอียดงาน</label><textarea class="form-control" id="reportEditWorkDescription" name="work_description" rows="3"></textarea><div class="form-text" id="reportEditWorkDescriptionHint"></div></div>
                             <div class="col-md-6" id="reportEditWorkActionGroup"><label class="form-label" for="reportEditWorkAction" id="reportEditWorkActionLabel">การดำเนินงาน</label><textarea class="form-control" id="reportEditWorkAction" name="work_action" rows="3"></textarea><div class="form-text" id="reportEditWorkActionHint">งาน AV จะเปลี่ยนเป็น “เสร็จสิ้น” อัตโนมัติเมื่อกรอกการดำเนินงานหรือเวลาสิ้นสุด</div></div>
-                            <div class="col-12 d-none" id="reportEditEquipmentGroup"><div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2"><label class="form-label mb-0">อุปกรณ์ที่ใช้งาน <span class="report-edit-optional">ถ้ามี</span></label><button class="btn btn-sm btn-outline-primary" type="button" id="reportEditAddEquipment"><i class="bi bi-plus-lg me-1"></i>เพิ่มอุปกรณ์</button></div><div id="reportEditEquipmentRows"></div><div class="form-text">รายการเดิมจะถูกเก็บไว้เพื่อรักษาประวัติงาน สามารถเพิ่มอุปกรณ์หรือปรับจำนวนได้</div></div>
-                            <div class="col-md-6"><label class="form-label" for="reportEditProblem">ปัญหาที่พบ <span class="text-danger d-none" id="reportEditProblemRequired">*</span><span class="report-edit-optional d-none" id="reportEditProblemOptional">ถ้ามี</span></label><textarea class="form-control" id="reportEditProblem" name="problem" rows="3"></textarea></div>
+                            <div class="col-12 d-none" id="reportEditEquipmentGroup"><div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2"><label class="form-label mb-0">อุปกรณ์ที่ใช้งาน <span class="report-edit-optional">ไม่บังคับ</span></label><button class="btn btn-sm btn-outline-primary" type="button" id="reportEditAddEquipment"><i class="bi bi-plus-lg me-1"></i>เพิ่มอุปกรณ์</button></div><div id="reportEditEquipmentRows"></div><div class="form-text">รายการเดิมจะถูกเก็บไว้เพื่อรักษาประวัติงาน สามารถเพิ่มอุปกรณ์หรือปรับจำนวนได้</div></div>
+                            <div class="col-md-6"><label class="form-label" for="reportEditProblem">ปัญหาที่พบ <span class="text-danger d-none" id="reportEditProblemRequired">*</span><span class="report-edit-optional d-none" id="reportEditProblemOptional">ไม่บังคับ</span></label><textarea class="form-control" id="reportEditProblem" name="problem" rows="3"></textarea></div>
                             <div class="col-md-6"><label class="form-label" for="reportEditSolution">วิธีแก้ไขปัญหา <span class="report-edit-optional d-none" id="reportEditSolutionOptional">ถ้ามี</span></label><textarea class="form-control" id="reportEditSolution" name="solution" rows="3"></textarea><div class="form-text" id="reportEditSolutionHint">งาน IT จะเปลี่ยนเป็น “เสร็จสิ้น” อัตโนมัติเมื่อกรอกวิธีแก้ไข</div></div>
                             <div class="col-12"><label class="form-label" for="reportEditRemark">หมายเหตุ</label><textarea class="form-control" id="reportEditRemark" name="remark" rows="2"></textarea></div>
                         </div>
                     </section>
-                    <section class="report-edit-section report-edit-section--time mb-0">
-                        <h3 class="report-edit-section-heading" id="reportEditTimeHeading"><i class="bi bi-clock-history"></i>ระยะเวลาการดำเนินงาน</h3>
+                    <section class="report-edit-section mb-0">
+                        <h3 class="h6 fw-bold mb-3" id="reportEditTimeHeading"><i class="bi bi-clock-history me-2"></i>ระยะเวลาการดำเนินงาน</h3>
                         <div class="row g-3">
                             <div class="col-md-6 col-lg-3"><label class="form-label" for="reportEditStartDate" id="reportEditStartDateLabel">วันเริ่มดำเนินการ <span class="text-danger">*</span></label><input type="text" class="form-control date-picker" id="reportEditStartDate" name="start_date" required></div>
                             <div class="col-md-6 col-lg-3"><label class="form-label" for="reportEditStartTime" id="reportEditStartTimeLabel">เวลาเริ่มงาน <span class="text-danger">*</span></label><input type="text" class="form-control time-picker" id="reportEditStartTime" name="start_work_time" required></div>
@@ -680,18 +679,15 @@ require_once __DIR__ . "/../includes/app_header.php";
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <div class="report-filter-title-wrap d-flex align-items-center gap-3">
-                    <span class="report-filter-title-icon d-inline-flex align-items-center justify-content-center" aria-hidden="true"><i class="bi bi-sliders2"></i></span>
-                    <div>
-                        <h2 class="modal-title fs-5" id="reportFilterModalLabel">ตัวกรองรายการงาน</h2>
-                        <p class="small text-muted mb-0 mt-1">เลือกเฉพาะเงื่อนไขที่จำเป็น แล้วกดใช้ตัวกรอง</p>
-                    </div>
+                <div>
+                    <h2 class="modal-title fs-5" id="reportFilterModalLabel"><i class="bi bi-sliders2 me-2"></i>ตัวกรองรายการงาน</h2>
+                    <p class="small text-muted mb-0 mt-1">เลือกเฉพาะเงื่อนไขที่จำเป็น แล้วกดใช้ตัวกรอง</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
             </div>
             <div class="modal-body">
                 <section class="report-filter-section" aria-labelledby="reportWorkFilterHeading">
-                    <h3 class="report-filter-heading" id="reportWorkFilterHeading"><i class="bi bi-card-checklist"></i>ข้อมูลงาน</h3>
+                    <h3 class="report-filter-heading" id="reportWorkFilterHeading">ข้อมูลงาน</h3>
                     <div class="row g-3">
                         <?php if ($report_can_filter_team): ?>
                             <div class="col-md-6"><label class="form-label" for="reportDepartmentFilter">ทีม</label><select class="form-select" id="reportDepartmentFilter"><option value="">ทุกทีม</option><?php foreach ($departments as $item): ?><option value="<?php echo htmlspecialchars($item, ENT_QUOTES, "UTF-8"); ?>"><?php echo htmlspecialchars($item, ENT_QUOTES, "UTF-8"); ?></option><?php endforeach; ?></select></div>
@@ -701,7 +697,7 @@ require_once __DIR__ . "/../includes/app_header.php";
                     </div>
                 </section>
                 <section class="report-filter-section mb-0" aria-labelledby="reportDateFilterHeading">
-                    <h3 class="report-filter-heading" id="reportDateFilterHeading"><i class="bi bi-calendar3"></i>ช่วงวันที่สร้างงาน</h3>
+                    <h3 class="report-filter-heading" id="reportDateFilterHeading">ช่วงวันที่สร้างงาน</h3>
                     <p class="small text-muted mb-3">เลือกวันเริ่มต้น วันสิ้นสุด หรือเลือกทั้งสองวันเพื่อกำหนดช่วง</p>
                     <div class="row g-3">
                         <div class="col-md-6"><label class="form-label" for="reportStartDate">ตั้งแต่วันที่</label><input type="text" class="form-control date-picker" id="reportStartDate" placeholder="วว/ดด/ปปปป"></div>
@@ -973,21 +969,11 @@ $task_duration = report_task_duration($task["start_time"], $task["finish_time"])
     .report-filter-chip:hover, .report-filter-chip:focus { color: #174f84; border-color: #9dbbd7; background: #edf5fd; }
     .report-filter-reset { margin-left: .15rem; color: #a33a44; font-size: .82rem; font-weight: 600; }
     .report-filter-reset:hover, .report-filter-reset:focus { color: #7f1d1d; text-decoration: underline !important; }
-    .report-filter-modal .modal-content { overflow: hidden; border: 1px solid #c8d8e7; border-radius: 1rem; box-shadow: 0 22px 58px rgba(15, 35, 57, .24); }
-    .report-filter-modal .modal-header { align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid #cfe0ef; background: linear-gradient(120deg, #f8fbfe, #eaf3fb); }
-    .report-filter-title-wrap { min-width: 0; }
-    .report-filter-title-icon { width: 44px; height: 44px; flex: 0 0 44px; color: #fff; border-radius: .75rem; background: linear-gradient(135deg, #2584de, #105a9e); box-shadow: 0 6px 15px rgba(23, 105, 194, .22); font-size: 1.1rem; }
-    .report-filter-modal .modal-title { color: #153b63; font-weight: 700; }
-    .report-filter-modal .modal-body { padding: 1rem; background: #f2f6fa; }
-    .report-filter-section { overflow: hidden; padding: 0 1rem 1rem; margin-bottom: 1rem; border: 1px solid #d7e3ee; border-radius: .8rem; background: #fff; box-shadow: 0 3px 11px rgba(30, 64, 98, .045); }
-    .report-filter-section:last-child { margin-bottom: 0; }
-    .report-filter-heading { display: flex; align-items: center; gap: .5rem; padding: .72rem 1rem; margin: 0 -1rem 1rem; color: #1f5688; border-bottom: 1px solid #dce8f2; background: #edf5fc; font-size: .95rem; font-weight: 700; }
-    .report-filter-heading i { color: #1769c2; }
-    .report-filter-modal .form-label { color: #36536f; font-weight: 700; }
-    .report-filter-modal .form-control, .report-filter-modal .form-select { border-color: #c7d8e7; background-color: #fbfdff; }
-    .report-filter-modal .form-control:focus, .report-filter-modal .form-select:focus { border-color: #5b9bd5; background-color: #fff; box-shadow: 0 0 0 .2rem rgba(23, 105, 194, .12); }
-    .report-filter-modal .modal-footer { padding: .85rem 1.25rem; border-top: 1px solid #d2e0ec; background: #f8fafc; }
-    .report-filter-modal .modal-footer .btn-primary { box-shadow: 0 5px 13px rgba(23, 105, 194, .2); }
+    .report-filter-modal .modal-content { border: 1px solid #d6e0ea; border-radius: .9rem; overflow: hidden; }
+    .report-filter-modal .modal-header { align-items: flex-start; background: #f8fafc; }
+    .report-filter-section { padding-bottom: 1.15rem; margin-bottom: 1.15rem; border-bottom: 1px solid #e5ebf1; }
+    .report-filter-section:last-child { padding-bottom: 0; border-bottom: 0; }
+    .report-filter-heading { margin: 0 0 .85rem; color: #244b70; font-size: .95rem; font-weight: 700; }
 
     @media (max-width: 767.98px) {
         .report-toolbar { padding: .85rem; }
@@ -1013,8 +999,6 @@ $task_duration = report_task_duration($task["start_time"], $task["finish_time"])
         .report-header-actions { flex-direction: column; align-items: stretch !important; }
         .filter-toggle { width: 100%; }
         .report-page-size { justify-content: space-between; }
-        .report-filter-modal .modal-footer { align-items: stretch; }
-        .report-filter-modal .modal-footer .btn { flex: 1 1 auto; }
     }
 </style>
 <style>
@@ -1026,10 +1010,10 @@ $task_duration = report_task_duration($task["start_time"], $task["finish_time"])
     .task-details-kicker { display: block; margin-bottom: .25rem; color: #1769c2; font-size: .76rem; font-weight: 700; letter-spacing: .04em; }
     .task-details-modal .modal-title { overflow-wrap: anywhere; color: #0f2942; font-size: 1.2rem; font-weight: 700; line-height: 1.35; }
     .task-details-modal .btn-close { flex: 0 0 auto; margin-top: .1rem; }
-    .task-details-modal .modal-body { min-height: 0; padding: .2rem 1.25rem 1rem; overflow-y: auto; overscroll-behavior: contain; color: #334155; background: #f3f7fb; }
-    .task-detail-section { overflow: hidden; padding: 0 1.1rem 1.1rem; margin: 1rem 0 0; border: 1px solid #d6e2ed; border-radius: .8rem; background: #fff; box-shadow: 0 3px 12px rgba(30, 64, 98, .055); }
-    .task-detail-section:last-child { margin-bottom: 0; }
-    .task-detail-section-heading { display: flex; align-items: center; gap: .55rem; padding: .78rem 1.1rem; margin: 0 -1.1rem 1rem; color: #153b63; border-bottom: 1px solid #d8e6f2; background: #eaf3fb; font-size: .94rem; font-weight: 700; }
+    .task-details-modal .modal-body { min-height: 0; padding: 0 1.5rem; overflow-y: auto; overscroll-behavior: contain; color: #334155; background: #fff; }
+    .task-detail-section { padding: 1.25rem 0; border-bottom: 1px solid #e8edf3; }
+    .task-detail-section:last-child { border-bottom: 0; }
+    .task-detail-section-heading { display: flex; align-items: center; gap: .55rem; margin: 0 0 1rem; color: #153b63; font-size: .94rem; font-weight: 700; }
     .task-detail-section-heading i { color: #1769c2; font-size: 1rem; }
     .task-detail-item { min-width: 0; }
     .task-detail-label { display: block; margin-bottom: .35rem; color: #64748b; font-size: .78rem; font-weight: 600; line-height: 1.35; }
@@ -1038,11 +1022,7 @@ $task_duration = report_task_duration($task["start_time"], $task["finish_time"])
     .task-detail-summary .task-detail-value { font-weight: 500; }
     .task-detail-field + .task-detail-field { margin-top: 1.1rem; padding-top: 1.1rem; border-top: 1px dashed #dbe3ec; }
     .task-detail-field .task-detail-value { white-space: normal; }
-    .task-detail-section--problem { border-color: #f2d3bf; }
-    .task-detail-section--problem .task-detail-section-heading { color: #9a3412; border-bottom-color: #f3d9c8; background: #fff3e9; }
     .task-detail-section--problem .task-detail-section-heading i { color: #c2410c; }
-    .task-detail-section--solution { border-color: #c9e5d1; }
-    .task-detail-section--solution .task-detail-section-heading { color: #166534; border-bottom-color: #d4ead9; background: #edf8f0; }
     .task-detail-section--solution .task-detail-section-heading i { color: #15803d; }
     .task-detail-empty { color: #8492a6; font-style: italic; }
     .task-detail-meta { align-items: start; }
@@ -1064,32 +1044,18 @@ $task_duration = report_task_duration($task["start_time"], $task["finish_time"])
         .task-details-modal .modal-dialog { max-width: none; min-height: calc(100% - 1rem); margin: .5rem; }
         .task-details-modal .modal-content { max-height: calc(100dvh - 1rem); border-radius: .8rem; }
         .task-details-modal .modal-header, .task-details-modal .modal-footer { padding: .9rem 1rem; }
-        .task-details-modal .modal-body { padding: .1rem .75rem .75rem; }
-        .task-detail-section { padding: 0 .85rem .9rem; margin-top: .75rem; border-radius: .7rem; }
-        .task-detail-section-heading { padding: .7rem .85rem; margin: 0 -.85rem .85rem; }
+        .task-details-modal .modal-body { padding: 0 1rem; }
+        .task-detail-section { padding: 1rem 0; }
+        .task-detail-section-heading { margin-bottom: .85rem; }
         .task-details-modal .modal-footer .btn { flex: 1 1 auto; }
     }
-    .report-edit-modal .modal-content { max-height: calc(100vh - 2rem); overflow: hidden; border: 1px solid #c4d4e2; border-radius: 1rem; box-shadow: 0 22px 58px rgba(15, 35, 57, .24); }
+    .report-edit-modal .modal-content { max-height: calc(100vh - 2rem); overflow: hidden; border: 1px solid #c4d4e2; border-radius: 1rem; box-shadow: 0 18px 48px rgba(15, 35, 57, .2); }
     .report-edit-modal #reportEditTaskForm { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; overflow: hidden; }
-    .report-edit-modal .modal-header { align-items: center; padding: 1rem 1.35rem; color: #153b63; border-bottom: 1px solid #c9dbea; background: linear-gradient(120deg, #f8fbfe, #e7f1fa); }
-    .report-edit-heading-wrap { min-width: 0; }
-    .report-edit-title-icon { width: 46px; height: 46px; flex: 0 0 46px; color: #fff; border-radius: .8rem; background: linear-gradient(135deg, #2584de, #105a9e); box-shadow: 0 7px 16px rgba(23, 105, 194, .22); font-size: 1.15rem; }
-    .report-edit-modal .modal-title { color: #153b63; font-weight: 700; }
+    .report-edit-modal .modal-header { padding: 1rem 1.35rem; color: #153b63; border-bottom: 1px solid #bfd0df; background: #e7f0f8; }
     .report-edit-modal .modal-body { min-height: 0; padding: 1.25rem; overflow-y: auto; overscroll-behavior: contain; background: #eef3f7; }
-    .report-edit-modal .modal-footer { padding: .9rem 1.35rem; border-top: 1px solid #c9dbea; background: #f8fafc; }
-    .report-edit-modal .modal-footer .btn-primary { min-width: 145px; box-shadow: 0 5px 13px rgba(23, 105, 194, .2); }
-    .report-edit-section { overflow: hidden; padding: 0 1rem 1rem; margin-bottom: 1rem; border: 1px solid #cbdbe8; border-radius: .85rem; background: #fff; box-shadow: 0 4px 13px rgba(30, 64, 98, .05); }
-    .report-edit-section-heading { display: flex; align-items: center; gap: .55rem; padding: .78rem 1rem; margin: 0 -1rem 1rem; color: #1b4f7f; border-bottom: 1px solid #d9e6f0; background: #edf5fc; font-size: .95rem; font-weight: 700; }
-    .report-edit-section-heading i { color: #1769c2; font-size: 1rem; }
-    .report-edit-section--details .report-edit-section-heading { color: #4c428d; border-bottom-color: #e1ddf1; background: #f3f1fb; }
-    .report-edit-section--details .report-edit-section-heading i { color: #6757b7; }
-    .report-edit-section--time .report-edit-section-heading { color: #17624f; border-bottom-color: #d7e9e2; background: #edf8f4; }
-    .report-edit-section--time .report-edit-section-heading i { color: #258468; }
-    .report-edit-modal .form-label { color: #36536f; font-weight: 700; }
-    .report-edit-modal .form-control, .report-edit-modal .form-select { border-color: #c7d8e7; background-color: #fbfdff; }
-    .report-edit-modal .form-control:hover, .report-edit-modal .form-select:hover { border-color: #9ebbd5; background-color: #fff; }
-    .report-edit-modal .form-control:focus, .report-edit-modal .form-select:focus { border-color: #5b9bd5; background-color: #fff; box-shadow: 0 0 0 .2rem rgba(23, 105, 194, .12); }
-    .report-edit-modal #reportEditEquipmentGroup { padding: .85rem; border: 1px dashed #bdd2e4; border-radius: .7rem; background: #f7fbfe; }
+    .report-edit-modal .modal-footer { padding: .9rem 1.35rem; border-top: 1px solid #bfd0df; background: #e9f1f7; }
+    .report-edit-section { padding: 1rem; margin-bottom: 1rem; border: 1px solid #c5d5e2; border-radius: .8rem; background: #f9fbfd; }
+    .report-edit-section h3 { color: #1b4f7f; }
     .report-equipment-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .65rem; align-items: center; margin-bottom: .65rem; }
     .report-equipment-quantity { display: grid; grid-template-columns: 2.35rem 4.25rem 2.35rem; }
     .report-equipment-quantity .btn, .report-equipment-quantity .form-control { border-radius: 0; }
@@ -1100,7 +1066,7 @@ $task_duration = report_task_duration($task["start_time"], $task["finish_time"])
     .report-edit-modal .task-auto-status { display: flex; min-height: 38px; align-items: center; gap: .7rem; padding: .45rem .65rem; border: 1px solid #c9d9e7; border-radius: .55rem; background: #f5f9fc; }
     .report-edit-modal .task-auto-status small { color: #5f7387; line-height: 1.35; }
     .report-edit-optional { display: inline-flex; margin-left: .35rem; padding: .12rem .42rem; color: #64748b; border-radius: 999px; background: #e8eef4; font-size: .7rem; font-weight: 600; vertical-align: middle; }
-    @media (max-width: 575.98px) { .report-edit-modal .modal-dialog { min-height: calc(100% - 1rem); margin: .5rem; } .report-edit-modal .modal-content { max-height: calc(100vh - 1rem); } .report-edit-modal .modal-header { padding: .85rem 1rem; } .report-edit-title-icon { width: 40px; height: 40px; flex-basis: 40px; } .report-edit-modal .modal-body { padding: .75rem; } .report-edit-section { padding: 0 .8rem .85rem; } .report-edit-section-heading { padding: .7rem .8rem; margin: 0 -.8rem .85rem; } .report-edit-modal .modal-footer { padding: .75rem; } .report-edit-modal .modal-footer .btn { flex: 1 1 auto; } }
+    @media (max-width: 575.98px) { .report-edit-modal .modal-dialog { min-height: calc(100% - 1rem); margin: .5rem; } .report-edit-modal .modal-content { max-height: calc(100vh - 1rem); } .report-edit-modal .modal-body { padding: .85rem; } .report-edit-section { padding: .85rem; } }
 </style>
 <script>
     // Optional values stay readable without resembling disabled form controls.
@@ -1427,24 +1393,19 @@ $task_duration = report_task_duration($task["start_time"], $task["finish_time"])
         const openEditModal = (task, currentModal = null) => {
             if (!task) return;
             fillEditForm(task);
-            if (!window.bootstrap?.Modal) {
-                window.addEventListener("load", () => openEditModal(task, currentModal), { once: true });
-                return;
-            }
-            const modalInstance = window.bootstrap.Modal.getOrCreateInstance(modalElement);
+            const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
             if (currentModal) {
                 currentModal.addEventListener("hidden.bs.modal", () => modalInstance.show(), { once: true });
-                window.bootstrap.Modal.getOrCreateInstance(currentModal).hide();
+                bootstrap.Modal.getOrCreateInstance(currentModal).hide();
             } else {
                 modalInstance.show();
             }
         };
 
         document.querySelectorAll(".report-edit-task").forEach((button) => {
-            button.addEventListener("click", (event) => {
+            button.addEventListener("click", () => {
                 const task = taskMap.get(Number(button.dataset.editTaskId));
                 const detailModal = button.closest('[id^="taskModal"]');
-                if (detailModal) event.preventDefault();
                 openEditModal(task, detailModal);
             });
         });

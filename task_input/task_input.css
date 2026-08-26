@@ -2,6 +2,55 @@
     max-width: 1680px;
 }
 
+.task-page-heading {
+    position: relative;
+    overflow: hidden;
+    padding: 1.35rem 1.5rem;
+    border: 1px solid #cfe0ef;
+    border-radius: 1rem;
+    background: linear-gradient(125deg, #ffffff 0%, #f2f7fc 68%, #e7f2fc 100%);
+    box-shadow: 0 8px 24px rgba(26, 57, 89, .08);
+}
+
+.task-page-heading::before {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 5px;
+    background: linear-gradient(180deg, #2584de, #0e5ba6);
+    content: "";
+}
+
+.task-page-heading-copy {
+    position: relative;
+    z-index: 1;
+}
+
+.task-page-heading .page-heading {
+    color: #102f4f;
+    font-size: 1.65rem;
+    letter-spacing: -.02em;
+}
+
+.task-page-heading .page-subtitle {
+    color: #5d748b;
+    line-height: 1.55;
+}
+
+.task-page-heading-icon {
+    position: relative;
+    z-index: 1;
+    width: 58px;
+    height: 58px;
+    flex: 0 0 58px;
+    color: #fff;
+    border-radius: 1rem;
+    background: linear-gradient(135deg, #2584de, #0f5a9f);
+    box-shadow: 0 9px 20px rgba(23, 105, 194, .22);
+    font-size: 1.5rem;
+}
+
 /* A closed Flatpickr popup can retain its previous desktop position during a
    responsive resize; removing it from layout prevents transient page overflow. */
 .flatpickr-calendar:not(.open) {
@@ -96,10 +145,50 @@
 
 .task-section-card {
     overflow: visible;
+    border-color: #d4e0eb;
+    border-radius: 1rem;
+    box-shadow: 0 9px 26px rgba(26, 57, 89, .09);
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.task-section-card:hover {
+    border-color: #bfd3e5;
+    box-shadow: 0 12px 30px rgba(26, 57, 89, .12);
 }
 
 .task-section-card .card-header {
     min-height: 78px;
+    padding: 1rem 1.35rem;
+    border-bottom: 1px solid #dbe6f0;
+    border-radius: 1rem 1rem 0 0;
+    background: linear-gradient(90deg, #f9fbfd, #f1f6fb);
+}
+
+.task-section-card .card-body {
+    border-radius: 0 0 1rem 1rem;
+    background: #fff;
+}
+
+.task-section-card .section-icon {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    color: #1769c2;
+    border: 1px solid #d4e7f8;
+    border-radius: .75rem;
+    background: linear-gradient(135deg, #edf6fe, #dfeefa);
+    box-shadow: 0 5px 13px rgba(23, 105, 194, .13);
+    font-size: 1.05rem;
+}
+
+.task-section-card .section-title {
+    color: #173d62;
+    letter-spacing: -.01em;
+}
+
+.task-section-card .card-header .text-muted {
+    margin-top: .16rem;
+    color: #71859a !important;
 }
 
 .task-section-card textarea {
@@ -109,6 +198,26 @@
 .task-section-card .form-control:not(textarea),
 .task-section-card .form-select {
     min-height: 44px;
+}
+
+.task-section-card .form-control,
+.task-section-card .form-select {
+    border-color: #cbd9e7;
+    background-color: #fbfdff;
+    transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+}
+
+.task-section-card .form-control:hover,
+.task-section-card .form-select:hover {
+    border-color: #9ebbd5;
+    background-color: #fff;
+}
+
+.task-section-card .form-control:focus,
+.task-section-card .form-select:focus {
+    border-color: #4d93d2;
+    background-color: #fff;
+    box-shadow: 0 0 0 .22rem rgba(23, 105, 194, .12);
 }
 
 .task-section-card .form-label {
@@ -192,6 +301,32 @@
     color: #234a70;
 }
 
+.task-equipment-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: .65rem;
+    align-items: center;
+    margin-top: .65rem;
+}
+
+.task-equipment-quantity {
+    display: grid;
+    grid-template-columns: 2.35rem 4.25rem 2.35rem;
+}
+
+.task-equipment-quantity .btn,
+.task-equipment-quantity .form-control {
+    border-radius: 0;
+}
+
+.task-equipment-quantity .btn:first-child {
+    border-radius: .375rem 0 0 .375rem;
+}
+
+.task-equipment-quantity .btn:last-child {
+    border-radius: 0 .375rem .375rem 0;
+}
+
 .task-equipment-examples {
     display: flex;
     flex-wrap: wrap;
@@ -245,11 +380,15 @@
     gap: .3rem;
     padding: 1rem;
     color: #49627a;
-    border: 2px dashed #b8cadc;
+    border: 2px dashed #9dbbd7;
     border-radius: .8rem;
-    background: #f7fafc;
+    background: linear-gradient(145deg, #f9fcff, #eff6fc);
     text-align: center;
     transition: border-color .18s ease, background .18s ease, color .18s ease;
+}
+
+.task-image-section .task-file-drop {
+    min-height: 124px;
 }
 
 .task-file-drop:hover,
@@ -260,7 +399,15 @@
 }
 
 .task-file-drop i {
-    font-size: 2rem;
+    display: inline-flex;
+    width: 46px;
+    height: 46px;
+    align-items: center;
+    justify-content: center;
+    color: #1769c2;
+    border-radius: 50%;
+    background: #e1effb;
+    font-size: 1.45rem;
 }
 
 .task-file-drop span {
@@ -335,10 +482,11 @@
     justify-content: space-between;
     gap: 1rem;
     padding: 1rem 1.15rem;
-    border: 1px solid #cfdce9;
+    border: 1px solid #bfd3e5;
+    border-top: 3px solid #2780d4;
     border-radius: .9rem;
     background: rgba(255, 255, 255, .96);
-    box-shadow: 0 -5px 24px rgba(26, 57, 89, .12);
+    box-shadow: 0 -6px 28px rgba(26, 57, 89, .13);
     backdrop-filter: blur(8px);
 }
 
@@ -348,6 +496,11 @@
 
 .task-submit-bar .btn {
     min-height: 44px;
+}
+
+.task-submit-bar .btn-primary {
+    min-width: 132px;
+    box-shadow: 0 6px 14px rgba(23, 105, 194, .2);
 }
 
 @media (max-width: 1199.98px) {
@@ -391,7 +544,13 @@
     }
 
     .task-page-heading {
+        padding: 1.05rem 1.1rem;
         margin-bottom: 1rem !important;
+        border-radius: .8rem;
+    }
+
+    .task-page-heading .page-heading {
+        font-size: 1.35rem;
     }
 
     .task-section-card .card-header {
@@ -401,6 +560,16 @@
     .task-equipment-examples {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .task-equipment-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .task-equipment-quantity {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        grid-template-columns: 2.5rem minmax(4rem, 1fr) 2.5rem;
     }
 
     .task-submit-bar {

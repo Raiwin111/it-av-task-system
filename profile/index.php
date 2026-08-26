@@ -1,6 +1,9 @@
 <?php
 // A signed-in user may update only their own non-authorization profile fields.
 require_once __DIR__ . "/../auth/auth_check.php";
+header("Location: ../account_settings/#profileSettings");
+exit;
+
 require_once __DIR__ . "/../auth/remember_tokens.php";
 require_once __DIR__ . "/../config/db.php";
 

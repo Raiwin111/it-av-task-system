@@ -206,12 +206,11 @@ require_once __DIR__ . "/../includes/app_header.php";
 <div class="app-shell d-flex">
     <?php require_once __DIR__ . "/../includes/app_sidebar.php"; ?>
     <main class="main-content task-input-page flex-grow-1 p-4 p-lg-5">
-        <div class="task-page-heading d-flex align-items-center justify-content-between gap-3 mb-4">
-            <div class="task-page-heading-copy">
+        <div class="task-page-heading mb-4">
+            <div>
                 <h1 class="page-heading h3 fw-bold mb-1">บันทึกงานใหม่</h1>
                 <p class="page-subtitle mb-0">สร้าง Task สำหรับทีม IT / AV — กรอกเฉพาะข้อมูลที่มีและกลับมาแก้ไขเพิ่มเติมได้</p>
             </div>
-            <span class="task-page-heading-icon d-none d-sm-inline-flex align-items-center justify-content-center" aria-hidden="true"><i class="bi bi-clipboard2-plus-fill"></i></span>
         </div>
 
         <?php if (isset($_GET["saved"])): ?>
@@ -269,7 +268,7 @@ require_once __DIR__ . "/../includes/app_header.php";
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="location" class="form-label">สถานที่ </label>
+                                        <label for="location" class="form-label">สถานที่ /label>
                                         <select class="form-select" id="location" name="location">
                                             <option value="">ไม่ระบุ</option>
                                             <?php foreach ($location_options as $location_option): ?>
@@ -366,11 +365,11 @@ require_once __DIR__ . "/../includes/app_header.php";
                                         </div>
                                         <div class="col-12"><div class="task-section-divider"><span>เมื่อดำเนินงานเสร็จ</span></div></div>
                                         <div class="col-12">
-                                            <label for="finishDate" class="form-label" id="finishDateLabel"><?php echo $selected_task_department === "IT" ? "วันที่สิ้นสุด" : "วันที่สิ้นสุดกิจกรรม"; ?> </label>
+                                            <label for="finishDate" class="form-label" id="finishDateLabel"><?php echo $selected_task_department === "IT" ? "วันที่สิ้นสุด" : "วันที่สิ้นสุดกิจกรรม"; ?> <span class="task-optional-label" id="finishDateOptionalLabel"><?php echo $selected_task_department === "IT" ? "ถ้ามี" : "แนะนำให้ระบุ"; ?></span></label>
                                             <input type="text" class="form-control date-picker" id="finishDate" name="finish_date" value="<?php echo htmlspecialchars(task_post_string("finish_date"), ENT_QUOTES, "UTF-8"); ?>" placeholder="<?php echo $selected_task_department === "IT" ? "เว้นว่างได้" : "ระบุวันที่สิ้นสุดกิจกรรม"; ?>">
                                         </div>
                                         <div class="col-12">
-                                            <label for="finishWorkTime" class="form-label" id="finishTimeLabel"><?php echo $selected_task_department === "IT" ? "เวลาสิ้นสุดงาน" : "เวลาสิ้นสุดกิจกรรม"; ?> </label>
+                                            <label for="finishWorkTime" class="form-label" id="finishTimeLabel"><?php echo $selected_task_department === "IT" ? "เวลาสิ้นสุดงาน" : "เวลาสิ้นสุดกิจกรรม"; ?> <span class="task-optional-label" id="finishTimeOptionalLabel"><?php echo $selected_task_department === "IT" ? "ถ้ามี" : "แนะนำให้ระบุ"; ?></span></label>
                                             <input type="text" class="form-control time-picker" id="finishWorkTime" name="finish_work_time" value="<?php echo htmlspecialchars(task_post_string("finish_work_time"), ENT_QUOTES, "UTF-8"); ?>" placeholder="<?php echo $selected_task_department === "IT" ? "เว้นว่างได้" : "ระบุเวลาสิ้นสุดกิจกรรม"; ?>">
                                         </div>
                                         <div class="col-12"><p class="small text-muted mb-0"><i class="bi bi-info-circle me-1"></i>งาน IT เว้นเวลาสิ้นสุดไว้เติมภายหลังได้ ส่วนงาน AV แนะนำให้ระบุตามกำหนดการ</p></div>

@@ -53,29 +53,6 @@ $attempts_left = null;
 $lock_until_timestamp = null;
 $session_expired_notice = isset($_GET["expired"]);
 
-// Failed login submissions use Post/Redirect/Get. This prevents a browser refresh
-// from submitting the same password again and consuming another login attempt.
-$login_feedback = $_SESSION["login_feedback"] ?? null;
-unset($_SESSION["login_feedback"]);
-if (is_array($login_feedback)) {
-    $message = is_string($login_feedback["message"] ?? null) ? $login_feedback["message"] : "";
-    $message_type = ($login_feedback["message_type"] ?? "danger") === "warning" ? "warning" : "danger";
-    $attempts_left = is_int($login_feedback["attempts_left"] ?? null) ? $login_feedback["attempts_left"] : null;
-    $lock_until_timestamp = is_int($login_feedback["lock_until_timestamp"] ?? null) ? $login_feedback["lock_until_timestamp"] : null;
-}
-
-// Login throttling belongs to this browser session, not to an individual username
-// or every device sharing the same network address.
-$device_lock_until = (int) ($_SESSION["login_device_lock_until"] ?? 0);
-if ($device_lock_until > time()) {
-    $message = "มีการเข้าสู่ระบบผิดหลายครั้งเกินกำหนดจากเครื่องนี้";
-    $message_type = "danger";
-    $attempts_left = 0;
-    $lock_until_timestamp = $device_lock_until;
-} elseif ($device_lock_until > 0) {
-    unset($_SESSION["login_device_lock_until"], $_SESSION["login_device_failed_attempts"]);
-}
-
 // A one-time validator can restore a login for up to 30 days. The database stores
 // only its hash, and the validator is rotated after every automatic login.
 if (isset($_COOKIE["remember_me"])) {
@@ -106,30 +83,42 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if (!hash_equals($_SESSION["login_csrf_token"], $submitted_csrf_token)) {
         $message = "แบบฟอร์มหมดอายุ กรุณาลองใหม่อีกครั้ง";
         $message_type = "danger";
-    } elseif ((int) ($_SESSION["login_device_lock_until"] ?? 0) > time()) {
-        $lock_until_timestamp = (int) $_SESSION["login_device_lock_until"];
-        $message = "มีการเข้าสู่ระบบผิดหลายครั้งเกินกำหนดจากเครื่องนี้";
-        $message_type = "danger";
-        write_login_log($conn, $username, null, false, "device_locked");
     } else {
+        // A separate IP limit protects unknown usernames, which cannot be locked by account.
+        $ip_address = client_ip_address();
+        $ip_limit_stmt = $conn->prepare("SELECT COUNT(*) AS total FROM login_logs WHERE ip_address = ? AND is_success = 0 AND login_time >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)");
+        $ip_limit_stmt->bind_param("s", $ip_address);
+        $ip_limit_stmt->execute();
+        $recent_ip_failures = (int) ($ip_limit_stmt->get_result()->fetch_assoc()["total"] ?? 0);
+        $ip_limit_stmt->close();
+
+        if ($recent_ip_failures >= 20) {
+            write_login_log($conn, $username, null, false, "ip_rate_limited");
+            $message = "มีการพยายามเข้าสู่ระบบจากเครือข่ายนี้มากเกินไป กรุณาลองใหม่อีกครั้งภายหลัง";
+            $message_type = "danger";
+        } else {
         // Prepared statements keep submitted values out of the SQL command itself.
-        $stmt = $conn->prepare("SELECT id, username, password, department, role, profile_image, is_enabled, is_approved FROM users WHERE username = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT id, username, password, department, role, profile_image, is_enabled, is_approved, failed_login_attempts, lock_until FROM users WHERE username = ? LIMIT 1");
         $stmt->bind_param("s", $username);
         $stmt->execute();
         $user = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        if ($user && (int) $user["is_enabled"] !== 1) {
+        if ($user && !empty($user["lock_until"]) && strtotime($user["lock_until"]) > time()) {
+            write_login_log($conn, $username, (int) $user["id"], false, "account_locked");
+            $lock_until_timestamp = strtotime($user["lock_until"]);
+            $message = "มีการเข้าสู่ระบบผิดหลายครั้งเกินกำหนด";
+            $message_type = "danger";
+        } elseif ($user && (int) $user["is_enabled"] !== 1) {
             write_login_log($conn, $username, (int) $user["id"], false, "account_disabled");
             $message = "บัญชีนี้ถูกปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ";
             $message_type = "danger";
         } elseif ($user && password_verify($password, $user["password"])) {
-            // Clear legacy account locks and this browser's shared failure counter.
+            // Reset the per-account lock state only after a valid password.
             $reset_stmt = $conn->prepare("UPDATE users SET failed_login_attempts = 0, lock_until = NULL WHERE id = ?");
             $reset_stmt->bind_param("i", $user["id"]);
             $reset_stmt->execute();
             $reset_stmt->close();
-            unset($_SESSION["login_device_failed_attempts"], $_SESSION["login_device_lock_until"]);
             write_login_log($conn, $username, (int) $user["id"], true, null);
 
             // Prevent session fixation by changing the session ID after login.
@@ -150,35 +139,36 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             header("Location: ../dashboard/index.php");
             exit;
         } else {
-            $new_attempt_count = (int) ($_SESSION["login_device_failed_attempts"] ?? 0) + 1;
-            $_SESSION["login_device_failed_attempts"] = $new_attempt_count;
-            $attempts_left = max(0, 5 - $new_attempt_count);
-            $message = "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง";
-            $message_type = "danger";
-
+            // A known account is locked by account, not by browser session.
             if ($user) {
-                write_login_log($conn, $username, (int) $user["id"], false, "wrong_password");
+                $new_attempt_count = (int) $user["failed_login_attempts"] + 1;
+                $user_id = (int) $user["id"];
+
+                if ($new_attempt_count >= 5) {
+                    $lock_stmt = $conn->prepare("UPDATE users SET failed_login_attempts = 0, lock_until = DATE_ADD(NOW(), INTERVAL 5 MINUTE) WHERE id = ?");
+                    $lock_stmt->bind_param("i", $user_id);
+                    $lock_stmt->execute();
+                    $lock_stmt->close();
+                    $lock_until_timestamp = time() + (5 * 60);
+                    $message = "มีการเข้าสู่ระบบผิดหลายครั้งเกินกำหนด";
+                    $message_type = "danger";
+                    write_login_log($conn, $username, $user_id, false, "account_locked");
+                } else {
+                    $attempt_stmt = $conn->prepare("UPDATE users SET failed_login_attempts = ? WHERE id = ?");
+                    $attempt_stmt->bind_param("ii", $new_attempt_count, $user_id);
+                    $attempt_stmt->execute();
+                    $attempt_stmt->close();
+                    $attempts_left = 5 - $new_attempt_count;
+                    $message = "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง";
+                    write_login_log($conn, $username, $user_id, false, "wrong_password");
+                }
             } else {
                 write_login_log($conn, $username, null, false, "user_not_found");
-            }
-
-            if ($new_attempt_count >= 5) {
-                $lock_until_timestamp = time() + (5 * 60);
-                $_SESSION["login_device_lock_until"] = $lock_until_timestamp;
-                $message = "มีการเข้าสู่ระบบผิดหลายครั้งเกินกำหนดจากเครื่องนี้";
+                $message = "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง";
             }
         }
+        }
     }
-
-    $_SESSION["login_feedback"] = [
-        "message" => $message,
-        "message_type" => $message_type,
-        "attempts_left" => $attempts_left,
-        "lock_until_timestamp" => $lock_until_timestamp,
-    ];
-    unset($_SESSION["login_csrf_token"]);
-    header("Location: login.php");
-    exit;
 }
 ?>
 <!DOCTYPE html>
@@ -385,7 +375,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         <label for="username" class="form-label">ชื่อผู้ใช้งาน</label>
                         <div class="input-group input-group-lg">
                             <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-                            <input type="text" class="form-control" id="username" name="username" autocomplete="off" required autofocus>
+                            <input type="text" class="form-control" id="username" name="username"  required autofocus>
                         </div>
                     </div>
 
@@ -451,20 +441,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             });
         });
 
-        const usernameInput = document.getElementById('username');
-        const passwordInput = document.getElementById('password');
-        let previousUsername = usernameInput?.value ?? '';
-
-        // A saved password can belong to another account. Clear it whenever the
-        // username is edited so switching users cannot submit stale credentials.
-        usernameInput?.addEventListener('input', () => {
-            if (usernameInput.value !== previousUsername && passwordInput?.value) {
-                passwordInput.value = '';
-            }
-            previousUsername = usernameInput.value;
-        });
-
-        passwordInput?.addEventListener('keyup', (event) => {
+        document.getElementById('password')?.addEventListener('keyup', (event) => {
             document.getElementById('capsLockWarning')?.classList.toggle('d-none', !event.getModifierState('CapsLock'));
         });
     </script>

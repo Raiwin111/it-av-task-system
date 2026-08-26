@@ -29,6 +29,80 @@ $profile_stmt->close();
 $default_responsible_name = trim((string) ($task_profile["full_name"] ?? ""));
 if ($default_responsible_name === "") $default_responsible_name = (string) ($task_profile["username"] ?? $_SESSION["username"] ?? "");
 
+// USER, SUPER and ADMIN may create a new Equipment Master item directly from
+// the AV Task Input. Management of existing items remains in the ADMIN-only
+// Config actions.
+if ($_SERVER["REQUEST_METHOD"] === "POST" && task_post_string("action") === "quick_add_equipment") {
+    header("Content-Type: application/json; charset=UTF-8");
+
+    if (!$task_can_modify || !in_array($task_role, ["USER", "SUPER", "ADMIN"], true)) {
+        http_response_code(403);
+        echo json_encode(["ok" => false, "message" => "คุณไม่มีสิทธิ์เพิ่มอุปกรณ์"], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    if (!hash_equals($task_form_csrf, task_post_string("csrf_token"))) {
+        http_response_code(419);
+        echo json_encode(["ok" => false, "message" => "คำขอหมดอายุ กรุณาลองใหม่อีกครั้ง"], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $quick_equipment_name = trim(task_post_string("equipment_name"));
+    if ($quick_equipment_name === "" || mb_strlen($quick_equipment_name) > 150) {
+        http_response_code(422);
+        echo json_encode(["ok" => false, "message" => "กรุณาระบุชื่ออุปกรณ์ไม่เกิน 150 ตัวอักษร"], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $find_equipment_stmt = $conn->prepare("SELECT id, name, is_enabled FROM equipment WHERE name = ? LIMIT 1");
+    $find_equipment_stmt->bind_param("s", $quick_equipment_name);
+    $find_equipment_stmt->execute();
+    $existing_equipment = $find_equipment_stmt->get_result()->fetch_assoc();
+    $find_equipment_stmt->close();
+
+    if ($existing_equipment) {
+        if ((int) $existing_equipment["is_enabled"] !== 1) {
+            http_response_code(409);
+            echo json_encode(["ok" => false, "message" => "อุปกรณ์นี้มีอยู่แล้วแต่ถูกปิดใช้งาน กรุณาติดต่อ ADMIN"], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+        echo json_encode([
+            "ok" => true,
+            "created" => false,
+            "message" => "มีอุปกรณ์นี้อยู่แล้ว ระบบเลือกให้เรียบร้อย",
+            "equipment" => ["id" => (int) $existing_equipment["id"], "name" => (string) $existing_equipment["name"]],
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $next_sort_result = $conn->query("SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_sort_order FROM equipment");
+    $next_sort_order = (int) ($next_sort_result->fetch_assoc()["next_sort_order"] ?? 1);
+    $quick_equipment_stmt = $conn->prepare("INSERT INTO equipment (name, sort_order) VALUES (?, ?)");
+    $quick_equipment_stmt->bind_param("si", $quick_equipment_name, $next_sort_order);
+    $quick_equipment_saved = false;
+    try {
+        $quick_equipment_saved = $quick_equipment_stmt->execute();
+        $quick_equipment_id = (int) $quick_equipment_stmt->insert_id;
+    } catch (mysqli_sql_exception $exception) {
+        error_log("Quick equipment insert failed: " . $exception->getMessage());
+        $quick_equipment_id = 0;
+    }
+    $quick_equipment_stmt->close();
+
+    if (!$quick_equipment_saved) {
+        http_response_code(500);
+        echo json_encode(["ok" => false, "message" => "ไม่สามารถเพิ่มอุปกรณ์ได้ กรุณาลองใหม่อีกครั้ง"], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    echo json_encode([
+        "ok" => true,
+        "created" => true,
+        "message" => "เพิ่มอุปกรณ์ใหม่และเลือกให้เรียบร้อย",
+        "equipment" => ["id" => $quick_equipment_id, "name" => $quick_equipment_name],
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 // Reuse recent task data for the responsible-person suggestion only. Task
 // titles intentionally remain unrestricted plain text.
 $suggestion_scope = "is_deleted = 0";
@@ -52,26 +126,9 @@ if ($default_responsible_name !== "") {
     ]);
 }
 
-$standard_equipment_definitions = [
-    ["display_name" => "จอโปรเจ็คเตอร์", "master_names" => ["โปรเจ็คเตอร์", "จอโปรเจ็คเตอร์"]],
-    ["display_name" => "จอ LED", "master_names" => ["จอ LED"]],
-    ["display_name" => "ไมค์ลอย", "master_names" => ["ไมค์ลอย"]],
-    ["display_name" => "เครื่องเสียงของทางโรงแรม", "master_names" => ["เครื่องเสียงของทางโรงแรม"]],
-];
-$equipment_master_by_name = [];
-$equipment_result = $conn->query("SELECT id, name FROM equipment WHERE is_enabled = 1 ORDER BY sort_order ASC, id ASC");
-while ($equipment_item = $equipment_result->fetch_assoc()) $equipment_master_by_name[(string) $equipment_item["name"]] = $equipment_item;
 $equipment_items = [];
-foreach ($standard_equipment_definitions as $equipment_definition) {
-    foreach ($equipment_definition["master_names"] as $master_name) {
-        if (!isset($equipment_master_by_name[$master_name])) continue;
-        $equipment_items[] = [
-            "id" => (int) $equipment_master_by_name[$master_name]["id"],
-            "name" => $equipment_definition["display_name"],
-        ];
-        break;
-    }
-}
+$equipment_result = $conn->query("SELECT id, name FROM equipment WHERE is_enabled = 1 ORDER BY sort_order ASC, name ASC, id ASC");
+while ($equipment_item = $equipment_result->fetch_assoc()) $equipment_items[] = $equipment_item;
 $enabled_equipment_ids = array_fill_keys(array_map(static fn(array $item): int => (int) $item["id"], $equipment_items), true);
 
 $posted_equipment_rows = [];
@@ -80,7 +137,7 @@ $posted_equipment_ids = is_array($_POST["equipment_id"] ?? null) ? $_POST["equip
 $posted_equipment_quantities = is_array($_POST["equipment_quantity"] ?? null) ? $_POST["equipment_quantity"] : [];
 foreach ($posted_equipment_ids as $index => $posted_equipment_id) {
     $equipment_id = filter_var($posted_equipment_id, FILTER_VALIDATE_INT);
-    $quantity = filter_var($posted_equipment_quantities[(string) $equipment_id] ?? null, FILTER_VALIDATE_INT);
+    $quantity = filter_var($posted_equipment_quantities[$index] ?? null, FILTER_VALIDATE_INT);
     if (!$equipment_id && trim((string) $posted_equipment_id) === "") continue;
     if (!$equipment_id || !$quantity || $quantity < 1) {
         $equipment_post_invalid = true;
@@ -94,8 +151,6 @@ $posted_equipment_values = [];
 foreach ($posted_equipment_rows as $equipment_id => $quantity) {
     $posted_equipment_values[] = ["equipment_id" => (int) $equipment_id, "quantity" => (int) $quantity];
 }
-$equipment_names_by_id = [];
-foreach ($equipment_items as $equipment_item) $equipment_names_by_id[(int) $equipment_item["id"]] = (string) $equipment_item["name"];
 
 $location_options = ["เมฆา1", "เมฆา2", "เมฆา3", "วารินทร์", "พิมาน"];
 $selected_task_department = task_post_string("department") ?: $task_department;
@@ -111,7 +166,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $task_can_modify && !hash_equals($t
     if ($department === "AV") $responsible_name = $default_responsible_name;
     $location_choice = trim(task_post_string("location"));
     $location = $location_choice === "__other__" ? trim(task_post_string("other_location")) : $location_choice;
-    $work_description = "";
+    $work_description = $department === "AV" ? trim(task_post_string("work_description")) : "";
     $work_action = "";
     $problem = "";
     $solution = "";
@@ -206,12 +261,11 @@ require_once __DIR__ . "/../includes/app_header.php";
 <div class="app-shell d-flex">
     <?php require_once __DIR__ . "/../includes/app_sidebar.php"; ?>
     <main class="main-content task-input-page flex-grow-1 p-4 p-lg-5">
-        <div class="task-page-heading d-flex align-items-center justify-content-between gap-3 mb-4">
-            <div class="task-page-heading-copy">
+        <div class="task-page-heading mb-4">
+            <div>
                 <h1 class="page-heading h3 fw-bold mb-1">บันทึกงานใหม่</h1>
                 <p class="page-subtitle mb-0">สร้าง Task สำหรับทีม IT / AV — กรอกเฉพาะข้อมูลที่มีและกลับมาแก้ไขเพิ่มเติมได้</p>
             </div>
-            <span class="task-page-heading-icon d-none d-sm-inline-flex align-items-center justify-content-center" aria-hidden="true"><i class="bi bi-clipboard2-plus-fill"></i></span>
         </div>
 
         <?php if (isset($_GET["saved"])): ?>
@@ -227,6 +281,12 @@ require_once __DIR__ . "/../includes/app_header.php";
         <form method="post" action="" enctype="multipart/form-data" id="taskCreateForm">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($task_form_csrf, ENT_QUOTES, "UTF-8"); ?>">
             <fieldset<?php echo !$task_can_modify ? " disabled" : ""; ?>>
+                <section class="task-form-guide task-form-guide-three mb-4" aria-label="ขั้นตอนการบันทึกงาน">
+                    <div class="task-guide-item active"><span>1</span><div><strong>ข้อมูลหลัก</strong><small>ชื่อ ทีม และผู้รับผิดชอบ</small></div></div>
+                    <div class="task-guide-item"><span>2</span><div><strong>ข้อมูลตามทีม</strong><small>รายละเอียด Event และอุปกรณ์สำหรับ AV</small></div></div>
+                    <div class="task-guide-item"><span>3</span><div><strong>เวลาและไฟล์</strong><small>ช่วงเวลาและรูปประกอบ</small></div></div>
+                </section>
+
                 <div class="row g-4 align-items-start">
                     <div class="col-xl-8">
                         <section class="card form-card task-section-card mb-4">
@@ -269,7 +329,7 @@ require_once __DIR__ . "/../includes/app_header.php";
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="location" class="form-label">สถานที่ </label>
+                                        <label for="location" class="form-label">สถานที่ <span class="task-optional-label">ถ้ามี</span></label>
                                         <select class="form-select" id="location" name="location">
                                             <option value="">ไม่ระบุ</option>
                                             <?php foreach ($location_options as $location_option): ?>
@@ -286,23 +346,6 @@ require_once __DIR__ . "/../includes/app_header.php";
                             </div>
                         </section>
 
-                        <section class="card form-card task-section-card task-image-section mb-4">
-                            <div class="card-header d-flex align-items-center gap-3">
-                                <span class="section-icon d-inline-flex align-items-center justify-content-center"><i class="bi bi-images"></i></span>
-                                <div><h2 class="section-title mb-0">รูปภาพประกอบ</h2><p class="small text-muted mb-0">ถ้ามี สูงสุด 5 รูป</p></div>
-                            </div>
-                            <div class="card-body p-4">
-                                <label class="task-file-drop" for="taskImages">
-                                    <i class="bi bi-cloud-arrow-up"></i>
-                                    <strong>เลือกรูปภาพ</strong>
-                                    <span>JPG, PNG หรือ WebP ไม่เกิน 5 MB/รูป</span>
-                                </label>
-                                <input type="file" class="visually-hidden" id="taskImages" name="task_images[]" accept="image/jpeg,image/png,image/webp" multiple>
-                                <div class="small text-muted mt-2" id="taskImageSummary">ยังไม่ได้เลือกรูปภาพ</div>
-                                <div class="row g-2 mt-1" id="taskImagePreview" aria-live="polite"></div>
-                            </div>
-                        </section>
-
                         <section class="card form-card task-section-card mb-4 mb-xl-0<?php echo $selected_task_department === "AV" ? "" : " d-none"; ?>" id="avDetailsSection">
                             <div class="card-header d-flex align-items-center gap-3">
                                 <span class="section-icon d-inline-flex align-items-center justify-content-center"><i class="bi bi-camera-video"></i></span>
@@ -310,35 +353,23 @@ require_once __DIR__ . "/../includes/app_header.php";
                             </div>
                             <div class="card-body p-4">
                                 <div class="row g-4">
+                                    <div class="col-12">
+                                        <label for="workDescription" class="form-label">รายละเอียด Event / งาน</label>
+                                        <textarea class="form-control" id="workDescription" name="work_description" rows="5" placeholder="อธิบายกิจกรรม จุดประสงค์ หรือข้อมูลสำคัญของ Event"><?php echo htmlspecialchars(task_post_string("work_description"), ENT_QUOTES, "UTF-8"); ?></textarea>
+                                        <div class="form-text">รายละเอียดเชิงปัญหาและการแก้ไขสามารถเติมภายหลังได้ที่ Report → Edit</div>
+                                    </div>
                                     <div class="col-12" id="avEquipmentGuide">
                                         <div class="task-equipment-guide">
-                                            <div><i class="bi bi-camera-reels me-2"></i><strong>อุปกรณ์ที่ใช้งาน (ถ้ามี)</strong></div>
-                                            <div class="mt-3">
-                                                <label class="visually-hidden" for="equipmentPicker">เลือกอุปกรณ์</label>
-                                                <select class="form-select" id="equipmentPicker">
-                                                    <option value="">เลือกอุปกรณ์</option>
-                                                    <?php foreach ($equipment_items as $equipment_item): ?>
-                                                        <option value="<?php echo (int) $equipment_item["id"]; ?>"><?php echo htmlspecialchars($equipment_item["name"], ENT_QUOTES, "UTF-8"); ?></option>
-                                                    <?php endforeach; ?>
-                                                </select>
+                                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                                <div><i class="bi bi-camera-reels me-2"></i><strong>อุปกรณ์ที่ใช้งาน (ถ้ามี)</strong></div>
+                                                <div class="d-flex flex-wrap gap-2">
+                                                    <button class="btn btn-sm btn-outline-secondary" type="button" id="addEquipmentRow"><i class="bi bi-plus-lg me-1"></i>เพิ่มรายการเลือก</button>
+                                                    <button class="btn btn-sm btn-outline-primary" type="button" id="addEquipmentMasterButton" data-bs-toggle="modal" data-bs-target="#addEquipmentMasterModal"><i class="bi bi-plus-lg me-1"></i>เพิ่มอุปกรณ์</button>
+                                                </div>
                                             </div>
-                                            <div class="mt-2" id="equipmentRows" aria-live="polite">
-                                                <?php foreach ($posted_equipment_rows as $equipment_id => $quantity): ?>
-                                                    <?php if (!isset($equipment_names_by_id[$equipment_id])) continue; ?>
-                                                    <div class="task-equipment-row" data-equipment-row data-equipment-id="<?php echo (int) $equipment_id; ?>">
-                                                        <input type="hidden" name="equipment_id[]" value="<?php echo (int) $equipment_id; ?>">
-                                                        <strong data-equipment-name><?php echo htmlspecialchars($equipment_names_by_id[$equipment_id], ENT_QUOTES, "UTF-8"); ?></strong>
-                                                        <div class="task-equipment-quantity">
-                                                            <button class="btn btn-outline-secondary" type="button" data-quantity-action="decrease" aria-label="ลดจำนวน <?php echo htmlspecialchars($equipment_names_by_id[$equipment_id], ENT_QUOTES, "UTF-8"); ?>">−</button>
-                                                            <input class="form-control text-center" type="number" name="equipment_quantity[<?php echo (int) $equipment_id; ?>]" value="<?php echo (int) $quantity; ?>" min="1" step="1" aria-label="จำนวน <?php echo htmlspecialchars($equipment_names_by_id[$equipment_id], ENT_QUOTES, "UTF-8"); ?>">
-                                                            <button class="btn btn-outline-secondary" type="button" data-quantity-action="increase" aria-label="เพิ่มจำนวน <?php echo htmlspecialchars($equipment_names_by_id[$equipment_id], ENT_QUOTES, "UTF-8"); ?>">+</button>
-                                                        </div>
-                                                        <button class="btn btn-outline-danger" type="button" data-equipment-remove aria-label="นำ <?php echo htmlspecialchars($equipment_names_by_id[$equipment_id], ENT_QUOTES, "UTF-8"); ?> ออก"><i class="bi bi-trash"></i></button>
-                                                    </div>
-                                                <?php endforeach; ?>
-                                            </div>
-                                            <div class="form-text mt-2<?php echo $posted_equipment_rows ? " d-none" : ""; ?>" id="equipmentSelectionEmpty">ยังไม่ได้เลือกอุปกรณ์</div>
-                                            <?php if (count($equipment_items) !== 4): ?><div class="form-text text-warning mt-2">รายการอุปกรณ์มาตรฐานยังไม่พร้อมใช้งานครบถ้วน กรุณาติดต่อผู้ดูแลระบบ</div><?php endif; ?>
+                                            <div class="mt-3" id="equipmentRows"></div>
+                                            <div class="form-text mt-2 d-none" id="equipmentMasterFeedback" role="status" aria-live="polite"></div>
+                                            <?php if (!$equipment_items): ?><div class="form-text text-warning mt-2" id="equipmentEmptyMessage">ยังไม่มีอุปกรณ์ที่เปิดใช้งาน กด “เพิ่มอุปกรณ์” เพื่อเริ่มใช้งาน</div><?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
@@ -366,11 +397,11 @@ require_once __DIR__ . "/../includes/app_header.php";
                                         </div>
                                         <div class="col-12"><div class="task-section-divider"><span>เมื่อดำเนินงานเสร็จ</span></div></div>
                                         <div class="col-12">
-                                            <label for="finishDate" class="form-label" id="finishDateLabel"><?php echo $selected_task_department === "IT" ? "วันที่สิ้นสุด" : "วันที่สิ้นสุดกิจกรรม"; ?> </label>
+                                            <label for="finishDate" class="form-label" id="finishDateLabel"><?php echo $selected_task_department === "IT" ? "วันที่สิ้นสุด" : "วันที่สิ้นสุดกิจกรรม"; ?> <span class="task-optional-label" id="finishDateOptionalLabel"><?php echo $selected_task_department === "IT" ? "ถ้ามี" : "แนะนำให้ระบุ"; ?></span></label>
                                             <input type="text" class="form-control date-picker" id="finishDate" name="finish_date" value="<?php echo htmlspecialchars(task_post_string("finish_date"), ENT_QUOTES, "UTF-8"); ?>" placeholder="<?php echo $selected_task_department === "IT" ? "เว้นว่างได้" : "ระบุวันที่สิ้นสุดกิจกรรม"; ?>">
                                         </div>
                                         <div class="col-12">
-                                            <label for="finishWorkTime" class="form-label" id="finishTimeLabel"><?php echo $selected_task_department === "IT" ? "เวลาสิ้นสุดงาน" : "เวลาสิ้นสุดกิจกรรม"; ?> </label>
+                                            <label for="finishWorkTime" class="form-label" id="finishTimeLabel"><?php echo $selected_task_department === "IT" ? "เวลาสิ้นสุดงาน" : "เวลาสิ้นสุดกิจกรรม"; ?> <span class="task-optional-label" id="finishTimeOptionalLabel"><?php echo $selected_task_department === "IT" ? "ถ้ามี" : "แนะนำให้ระบุ"; ?></span></label>
                                             <input type="text" class="form-control time-picker" id="finishWorkTime" name="finish_work_time" value="<?php echo htmlspecialchars(task_post_string("finish_work_time"), ENT_QUOTES, "UTF-8"); ?>" placeholder="<?php echo $selected_task_department === "IT" ? "เว้นว่างได้" : "ระบุเวลาสิ้นสุดกิจกรรม"; ?>">
                                         </div>
                                         <div class="col-12"><p class="small text-muted mb-0"><i class="bi bi-info-circle me-1"></i>งาน IT เว้นเวลาสิ้นสุดไว้เติมภายหลังได้ ส่วนงาน AV แนะนำให้ระบุตามกำหนดการ</p></div>
@@ -378,6 +409,22 @@ require_once __DIR__ . "/../includes/app_header.php";
                                 </div>
                             </section>
 
+                            <section class="card form-card task-section-card">
+                                <div class="card-header d-flex align-items-center gap-3">
+                                    <span class="section-icon d-inline-flex align-items-center justify-content-center"><i class="bi bi-images"></i></span>
+                                    <div><h2 class="section-title mb-0">รูปภาพประกอบ</h2><p class="small text-muted mb-0">ถ้ามี สูงสุด 5 รูป</p></div>
+                                </div>
+                                <div class="card-body p-4">
+                                    <label class="task-file-drop" for="taskImages">
+                                        <i class="bi bi-cloud-arrow-up"></i>
+                                        <strong>เลือกรูปภาพ</strong>
+                                        <span>JPG, PNG หรือ WebP ไม่เกิน 5 MB/รูป</span>
+                                    </label>
+                                    <input type="file" class="visually-hidden" id="taskImages" name="task_images[]" accept="image/jpeg,image/png,image/webp" multiple>
+                                    <div class="small text-muted mt-2" id="taskImageSummary">ยังไม่ได้เลือกรูปภาพ</div>
+                                    <div class="row g-2 mt-1" id="taskImagePreview" aria-live="polite"></div>
+                                </div>
+                            </section>
                         </div>
                     </div>
                 </div>
@@ -395,6 +442,28 @@ require_once __DIR__ . "/../includes/app_header.php";
             </fieldset>
         </form>
 
+        <div class="modal fade" id="addEquipmentMasterModal" tabindex="-1" aria-labelledby="addEquipmentMasterModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-sm modal-dialog-centered">
+                <div class="modal-content">
+                    <form id="addEquipmentMasterForm" novalidate>
+                        <div class="modal-header">
+                            <h2 class="modal-title fs-5" id="addEquipmentMasterModalLabel"><i class="bi bi-camera-reels me-2 text-primary"></i>เพิ่มอุปกรณ์ใหม่</h2>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+                        </div>
+                        <div class="modal-body">
+                            <label class="form-label" for="newEquipmentName">ชื่ออุปกรณ์ <span class="required-mark">*</span></label>
+                            <input class="form-control" type="text" id="newEquipmentName" name="equipment_name" maxlength="150" autocomplete="off" placeholder="เช่น กล้องวิดีโอ" required>
+                            <div class="invalid-feedback">กรุณากรอกชื่ออุปกรณ์</div>
+                            <div class="small text-danger mt-2 d-none" id="addEquipmentMasterError" role="alert"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button type="submit" class="btn btn-primary" id="saveEquipmentMasterButton"><i class="bi bi-plus-lg me-1"></i>เพิ่มอุปกรณ์</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </main>
 </div>
 <script>
@@ -415,6 +484,7 @@ require_once __DIR__ . "/../includes/app_header.php";
     const statusControl = document.getElementById("taskStatus");
     const departmentControl = document.getElementById("department");
     const avDetailsSection = document.getElementById("avDetailsSection");
+    const workDescriptionControl = document.getElementById("workDescription");
     const taskTimeSectionTitle = document.getElementById("taskTimeSectionTitle");
     const taskTimeSectionSubtitle = document.getElementById("taskTimeSectionSubtitle");
     const startDateLabel = document.getElementById("startDateLabel");
@@ -430,6 +500,8 @@ require_once __DIR__ . "/../includes/app_header.php";
     const responsibleControl = document.getElementById("responsibleName");
     const defaultResponsibleName = <?php echo json_encode($default_responsible_name, JSON_UNESCAPED_UNICODE); ?>;
     const taskResponsibleSuggestions = <?php echo json_encode($task_responsible_suggestions, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+    const equipmentItems = <?php echo json_encode($equipment_items, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+    const postedEquipmentRows = <?php echo json_encode($posted_equipment_values, JSON_UNESCAPED_UNICODE); ?>;
 
     const setupTaskAutocomplete = (input, menu, suggestions) => {
         if (!input || !menu || !Array.isArray(suggestions)) return;
@@ -520,43 +592,115 @@ require_once __DIR__ . "/../includes/app_header.php";
     setupTaskAutocomplete(document.getElementById("responsibleName"), document.getElementById("responsibleSuggestionMenu"), taskResponsibleSuggestions);
 
     const equipmentRows = document.getElementById("equipmentRows");
-    const equipmentPicker = document.getElementById("equipmentPicker");
-    const equipmentSelectionEmpty = document.getElementById("equipmentSelectionEmpty");
-    const updateEquipmentEmptyState = () => equipmentSelectionEmpty?.classList.toggle("d-none", Boolean(equipmentRows?.querySelector("[data-equipment-row]")));
+    const addEquipmentRowButton = document.getElementById("addEquipmentRow");
+    const addEquipmentMasterButton = document.getElementById("addEquipmentMasterButton");
+    const addEquipmentMasterModal = document.getElementById("addEquipmentMasterModal");
+    const addEquipmentMasterForm = document.getElementById("addEquipmentMasterForm");
+    const newEquipmentName = document.getElementById("newEquipmentName");
+    const addEquipmentMasterError = document.getElementById("addEquipmentMasterError");
+    const saveEquipmentMasterButton = document.getElementById("saveEquipmentMasterButton");
+    const equipmentMasterFeedback = document.getElementById("equipmentMasterFeedback");
+    const equipmentEmptyMessage = document.getElementById("equipmentEmptyMessage");
+    const equipmentOptionMarkup = (selectedId = 0) => [
+        '<option value="">เลือกอุปกรณ์</option>',
+        ...equipmentItems.map((item) => `<option value="${Number(item.id)}"${Number(item.id) === Number(selectedId) ? " selected" : ""}>${String(item.name).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;")}</option>`)
+    ].join("");
 
-    const bindEquipmentRow = (row) => {
-        const quantity = row.querySelector('input[type="number"]');
-        row.querySelector('[data-quantity-action="decrease"]')?.addEventListener("click", () => { quantity.value = Math.max(1, (Number(quantity.value) || 1) - 1); });
-        row.querySelector('[data-quantity-action="increase"]')?.addEventListener("click", () => { quantity.value = Math.max(1, (Number(quantity.value) || 1) + 1); });
-        row.querySelector("[data-equipment-remove]")?.addEventListener("click", () => {
-            row.remove();
-            updateEquipmentEmptyState();
-        });
+    const mergeDuplicateEquipment = (changedRow) => {
+        const changedSelect = changedRow.querySelector("select");
+        if (!changedSelect?.value) return;
+        const duplicateRow = Array.from(equipmentRows.querySelectorAll(".task-equipment-row"))
+            .find((row) => row !== changedRow && row.querySelector("select")?.value === changedSelect.value);
+        if (!duplicateRow) return;
+        const currentQuantity = changedRow.querySelector("input");
+        const duplicateQuantity = duplicateRow.querySelector("input");
+        duplicateQuantity.value = Math.max(1, Number(duplicateQuantity.value) || 1) + Math.max(1, Number(currentQuantity.value) || 1);
+        changedRow.remove();
     };
 
-    equipmentRows?.querySelectorAll("[data-equipment-row]").forEach(bindEquipmentRow);
-    updateEquipmentEmptyState();
+    const addEquipmentRow = (selectedId = 0, initialQuantity = 1) => {
+        if (!equipmentRows || !equipmentItems.length) return;
+        const row = document.createElement("div");
+        row.className = "task-equipment-row";
+        row.innerHTML = `<select class="form-select" name="equipment_id[]" aria-label="เลือกอุปกรณ์">${equipmentOptionMarkup(selectedId)}</select><div class="task-equipment-quantity"><button class="btn btn-outline-secondary" type="button" data-quantity-action="decrease" aria-label="ลดจำนวน">−</button><input class="form-control text-center" type="number" name="equipment_quantity[]" value="${Math.max(1, Number(initialQuantity) || 1)}" min="1" step="1" aria-label="จำนวน"><button class="btn btn-outline-secondary" type="button" data-quantity-action="increase" aria-label="เพิ่มจำนวน">+</button></div><button class="btn btn-outline-danger" type="button" data-equipment-remove aria-label="นำรายการนี้ออก"><i class="bi bi-trash"></i></button>`;
+        const select = row.querySelector("select");
+        const quantity = row.querySelector("input");
+        select.addEventListener("change", () => mergeDuplicateEquipment(row));
+        row.querySelector('[data-quantity-action="decrease"]').addEventListener("click", () => { quantity.value = Math.max(1, (Number(quantity.value) || 1) - 1); });
+        row.querySelector('[data-quantity-action="increase"]').addEventListener("click", () => { quantity.value = Math.max(1, (Number(quantity.value) || 1) + 1); });
+        row.querySelector("[data-equipment-remove]").addEventListener("click", () => row.remove());
+        equipmentRows.append(row);
+    };
 
-    equipmentPicker?.addEventListener("change", () => {
-        const equipmentId = Number(equipmentPicker.value);
-        if (!equipmentId || !equipmentRows) return;
-        const existingRow = equipmentRows.querySelector(`[data-equipment-id="${equipmentId}"]`);
-        if (existingRow) {
-            const quantity = existingRow.querySelector('input[type="number"]');
-            quantity.value = Math.max(1, Number(quantity.value) || 1) + 1;
-        } else {
-            const equipmentName = equipmentPicker.selectedOptions[0]?.textContent?.trim() || "อุปกรณ์";
-            const row = document.createElement("div");
-            row.className = "task-equipment-row";
-            row.dataset.equipmentRow = "";
-            row.dataset.equipmentId = String(equipmentId);
-            row.innerHTML = `<input type="hidden" name="equipment_id[]" value="${equipmentId}"><strong data-equipment-name></strong><div class="task-equipment-quantity"><button class="btn btn-outline-secondary" type="button" data-quantity-action="decrease" aria-label="ลดจำนวน">−</button><input class="form-control text-center" type="number" name="equipment_quantity[${equipmentId}]" value="1" min="1" step="1" aria-label="จำนวน"><button class="btn btn-outline-secondary" type="button" data-quantity-action="increase" aria-label="เพิ่มจำนวน">+</button></div><button class="btn btn-outline-danger" type="button" data-equipment-remove aria-label="นำรายการออก"><i class="bi bi-trash"></i></button>`;
-            row.querySelector("[data-equipment-name]").textContent = equipmentName;
-            bindEquipmentRow(row);
-            equipmentRows.append(row);
+    (postedEquipmentRows.length ? postedEquipmentRows : [{ equipment_id: 0, quantity: 1 }]).forEach((row) => addEquipmentRow(row.equipment_id, row.quantity));
+    addEquipmentRowButton?.addEventListener("click", () => addEquipmentRow());
+
+    const selectEquipmentItem = (equipmentId) => {
+        const rows = Array.from(equipmentRows?.querySelectorAll(".task-equipment-row") || []);
+        const selectedRow = rows.find((row) => Number(row.querySelector("select")?.value) === Number(equipmentId));
+        if (selectedRow) {
+            selectedRow.querySelector("select")?.focus();
+            return;
         }
-        equipmentPicker.value = "";
-        updateEquipmentEmptyState();
+        const emptyRow = rows.find((row) => !row.querySelector("select")?.value);
+        if (emptyRow) {
+            const emptySelect = emptyRow.querySelector("select");
+            emptySelect.value = String(equipmentId);
+            emptySelect.focus();
+            return;
+        }
+        addEquipmentRow(equipmentId, 1);
+        equipmentRows?.lastElementChild?.querySelector("select")?.focus();
+    };
+
+    addEquipmentMasterModal?.addEventListener("shown.bs.modal", () => {
+        addEquipmentMasterForm?.classList.remove("was-validated");
+        addEquipmentMasterError?.classList.add("d-none");
+        newEquipmentName?.focus();
+    });
+
+    addEquipmentMasterForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        addEquipmentMasterForm.classList.add("was-validated");
+        if (!addEquipmentMasterForm.checkValidity() || !newEquipmentName || !saveEquipmentMasterButton) return;
+
+        addEquipmentMasterError?.classList.add("d-none");
+        saveEquipmentMasterButton.disabled = true;
+        saveEquipmentMasterButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>กำลังเพิ่ม...';
+
+        const requestData = new FormData();
+        requestData.set("action", "quick_add_equipment");
+        requestData.set("csrf_token", <?php echo json_encode($task_form_csrf); ?>);
+        requestData.set("equipment_name", newEquipmentName.value.trim());
+
+        try {
+            const response = await fetch("index.php", { method: "POST", body: requestData, headers: { "X-Requested-With": "XMLHttpRequest" } });
+            const result = await response.json();
+            if (!response.ok || !result.ok || !result.equipment) throw new Error(result.message || "ไม่สามารถเพิ่มอุปกรณ์ได้");
+
+            const equipment = { id: Number(result.equipment.id), name: String(result.equipment.name) };
+            if (!equipmentItems.some((item) => Number(item.id) === equipment.id)) {
+                equipmentItems.push(equipment);
+                equipmentRows?.querySelectorAll('select[name="equipment_id[]"]').forEach((select) => select.add(new Option(equipment.name, String(equipment.id))));
+            }
+            equipmentEmptyMessage?.remove();
+            addEquipmentRowButton.disabled = false;
+            selectEquipmentItem(equipment.id);
+            if (equipmentMasterFeedback) {
+                equipmentMasterFeedback.textContent = result.message;
+                equipmentMasterFeedback.className = "form-text text-success mt-2";
+            }
+            addEquipmentMasterForm.reset();
+            bootstrap.Modal.getOrCreateInstance(addEquipmentMasterModal).hide();
+        } catch (error) {
+            if (addEquipmentMasterError) {
+                addEquipmentMasterError.textContent = error instanceof Error ? error.message : "ไม่สามารถเพิ่มอุปกรณ์ได้";
+                addEquipmentMasterError.classList.remove("d-none");
+            }
+        } finally {
+            saveEquipmentMasterButton.disabled = false;
+            saveEquipmentMasterButton.innerHTML = '<i class="bi bi-plus-lg me-1"></i>เพิ่มอุปกรณ์';
+        }
     });
 
     const updateITWorkflow = () => {
@@ -566,8 +710,10 @@ require_once __DIR__ . "/../includes/app_header.php";
         const hasFinishTime = Boolean(finishDateControl?.value.trim() && finishTimeControl?.value.trim());
 
         avDetailsSection?.classList.toggle("d-none", !isAV);
-        if (equipmentPicker) equipmentPicker.disabled = !isAV;
-        equipmentRows?.querySelectorAll("input, button").forEach((control) => { control.disabled = !isAV; });
+        if (workDescriptionControl) workDescriptionControl.disabled = !isAV;
+        equipmentRows?.querySelectorAll("select, input, button").forEach((control) => { control.disabled = !isAV; });
+        if (addEquipmentRowButton) addEquipmentRowButton.disabled = !isAV || !equipmentItems.length;
+        if (addEquipmentMasterButton) addEquipmentMasterButton.disabled = !isAV;
         if (responsibleControl) {
             responsibleControl.readOnly = isAV;
             if (isAV) responsibleControl.value = defaultResponsibleName;
@@ -582,7 +728,7 @@ require_once __DIR__ . "/../includes/app_header.php";
         if (finishDateOptionalLabel) finishDateOptionalLabel.textContent = isIT ? "ถ้ามี" : "แนะนำให้ระบุ";
         if (finishTimeOptionalLabel) finishTimeOptionalLabel.textContent = isIT ? "ถ้ามี" : "แนะนำให้ระบุ";
         if (finishDateControl) finishDateControl.placeholder = isIT ? "เว้นว่างได้" : "ระบุวันที่สิ้นสุดของงาน";
-        if (finishTimeControl) finishTimeControl.placeholder = isIT ? "เว้นว่างได้" : "ระบุเวลาสิ้นสุดของงาน";
+        if (finishTimeControl) finishTimeControl.placeholder = isIT ? "เว้นว่างได้" : "ระบุวันที่สิ้นสุดของงาน";
 
         let automaticStatus = "pending";
         if (isIT) {
@@ -651,7 +797,7 @@ require_once __DIR__ . "/../includes/app_header.php";
 
         files.forEach((file) => {
             const column = document.createElement("div");
-            column.className = "col-6 col-md-4 col-lg-3";
+            column.className = "col-6";
             const previewItem = document.createElement("div");
             previewItem.className = "task-image-preview-item";
             const image = document.createElement("img");

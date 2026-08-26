@@ -206,12 +206,11 @@ require_once __DIR__ . "/../includes/app_header.php";
 <div class="app-shell d-flex">
     <?php require_once __DIR__ . "/../includes/app_sidebar.php"; ?>
     <main class="main-content task-input-page flex-grow-1 p-4 p-lg-5">
-        <div class="task-page-heading d-flex align-items-center justify-content-between gap-3 mb-4">
-            <div class="task-page-heading-copy">
+        <div class="task-page-heading mb-4">
+            <div>
                 <h1 class="page-heading h3 fw-bold mb-1">บันทึกงานใหม่</h1>
                 <p class="page-subtitle mb-0">สร้าง Task สำหรับทีม IT / AV — กรอกเฉพาะข้อมูลที่มีและกลับมาแก้ไขเพิ่มเติมได้</p>
             </div>
-            <span class="task-page-heading-icon d-none d-sm-inline-flex align-items-center justify-content-center" aria-hidden="true"><i class="bi bi-clipboard2-plus-fill"></i></span>
         </div>
 
         <?php if (isset($_GET["saved"])): ?>

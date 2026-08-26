@@ -112,8 +112,9 @@ $task_ownership = $conn->query(
 )->fetch_assoc();
 expect_true(
     (int) $task_ownership["total"] > 0
-    && (int) $task_ownership["arm_total"] === (int) $task_ownership["total"],
-    "all historical tasks belong to Arm"
+    && (int) $task_ownership["arm_total"] > 0
+    && (int) $task_ownership["arm_total"] <= (int) $task_ownership["total"],
+    "Arm-owned task history remains while other valid users may create tasks"
 );
 
 $required_indexes = [
@@ -151,6 +152,8 @@ $task_input_source = file_get_contents(__DIR__ . "/../task_input/index.php");
 $task_edit_source = file_get_contents(__DIR__ . "/../task_input/edit.php");
 $task_input_css_source = file_get_contents(__DIR__ . "/../task_input/task_input.css");
 $config_source = file_get_contents(__DIR__ . "/../config/index.php");
+$config_css_source = file_get_contents(__DIR__ . "/../config/config.css");
+$account_settings_source = file_get_contents(__DIR__ . "/../account_settings/index.php");
 $profile_source = file_get_contents(__DIR__ . "/../profile/index.php");
 $activity_source = file_get_contents(__DIR__ . "/../includes/task_activity.php");
 $register_source = file_get_contents(__DIR__ . "/../auth/register.php");
@@ -160,21 +163,66 @@ $security_permissions_source = file_get_contents(__DIR__ . "/../SECURITY_AND_PER
 $database_reference_source = file_get_contents(__DIR__ . "/../DATABASE_REFERENCE.md");
 $ux_ui_guide_source = file_get_contents(__DIR__ . "/../UX_UI_GUIDE.md");
 expect_true(
-    str_contains($sidebar_source, "รายการงาน")
-    && str_contains($sidebar_source, "ตั้งค่าระบบ")
-    && str_contains($sidebar_source, 'href="../help/"'),
+    str_contains($report_source, '.task-detail-section { overflow: hidden;')
+    && str_contains($report_source, 'background: #eaf3fb;')
+    && str_contains($report_source, '.task-detail-section--problem .task-detail-section-heading')
+    && str_contains($report_source, 'background: #fff3e9;')
+    && str_contains($report_source, '.task-detail-section--solution .task-detail-section-heading')
+    && str_contains($report_source, 'background: #edf8f0;'),
+    "Task Details uses bordered cards and semantic section-header backgrounds"
+);
+expect_true(
+    str_contains($sidebar_source, "Report")
+    && str_contains($sidebar_source, "Account Settings")
+    && str_contains($sidebar_source, "System Config")
+    && str_contains($sidebar_source, "bi-person-gear")
+    && str_contains($sidebar_source, 'href="../help/"')
+    && str_contains($sidebar_source, 'nav-link mt-auto align-self-start')
+    && str_contains($sidebar_source, '<span class="visually-hidden">คู่มือ</span>'),
     "shared navigation uses the agreed terminology and real routes"
 );
 expect_true(!str_contains($sidebar_source, 'href="#"'), "shared navigation has no placeholder routes");
 expect_true(
-    str_contains($sidebar_source, '$sidebar_can_manage_users')
+    str_contains($sidebar_source, 'href="../account_settings/"')
     && str_contains($sidebar_source, 'href="../config/"')
-    && str_contains($sidebar_source, "ตั้งค่าบัญชี")
-    && str_contains($config_source, 'action" value="change_own_password"')
+    && str_contains($sidebar_source, "Account Settings")
+    && str_contains($sidebar_source, "System Config")
+    && str_contains($account_settings_source, 'action" value="change_own_password"')
+    && str_contains($account_settings_source, 'action" value="update_own_profile"')
+    && str_contains($account_settings_source, 'id="profileSettings"')
+    && str_contains($account_settings_source, 'id="accountUsername" name="username"')
+    && str_contains($account_settings_source, 'id="accountDepartment"')
+    && str_contains($account_settings_source, 'id="accountRole"')
+    && str_contains($account_settings_source, 'col-lg-3 d-flex flex-column align-items-center')
+    && str_contains($account_settings_source, 'col-lg-5"><div class="d-grid gap-3"')
+    && str_contains($account_settings_source, 'col-lg-4"><div class="h-100 rounded-3 border bg-light')
+    && str_contains($account_settings_source, 'id="accountProfileFileName"')
+    && !str_contains($account_settings_source, 'id="accountEmail"')
+    && str_contains($account_settings_source, 'UPDATE users SET username = ?, full_name = NULLIF(?, \'\')')
+    && str_contains($account_settings_source, 'id="changePasswordModal"')
+    && substr_count($account_settings_source, 'data-account-password-toggle=') === 3
+    && str_contains($account_settings_source, 'btn btn-danger')
+    && str_contains($account_settings_source, 'account_password_meets_policy')
+    && str_contains($account_settings_source, "preg_match('/[a-z]/'")
+    && str_contains($account_settings_source, "preg_match('/[A-Z]/'")
+    && str_contains($account_settings_source, 'data-password-rule="special"')
     && str_contains($config_source, 'action" value="create_user"')
+    && str_contains($config_source, 'header("Location: ../account_settings/?error=config_forbidden")')
+    && !str_contains($config_source, 'id="profileSettings"')
+    && !str_contains($config_source, 'id="changePasswordModal"')
     && !str_contains($config_source, "รออนุมัติ")
-    && str_contains($profile_source, '$active_nav = "profile"'),
-    "every role can open Config while only ADMIN receives account management"
+    && str_contains($profile_source, 'header("Location: ../account_settings/#profileSettings")')
+    && str_contains($header_source, 'href="../account_settings/#profileSettings"'),
+    "Account Settings is separate from ADMIN-only System Config"
+);
+expect_true(
+    str_contains($config_source, 'config-edit-user-modal')
+    && str_contains($config_source, 'config-edit-user-header')
+    && str_contains($config_source, 'btn-close btn-close-white')
+    && str_contains($config_source, 'htmlspecialchars(ucfirst(strtolower($role))')
+    && str_contains($config_css_source, 'background: linear-gradient(135deg, #2080dc, #1769c2)')
+    && str_contains($config_css_source, 'color: #fff'),
+    "System Config edit-user modal uses English role labels and a readable blue header"
 );
 expect_true(
     str_contains($register_source, "http_response_code(404)")
@@ -183,7 +231,23 @@ expect_true(
     "public registration is disabled and accounts are provisioned through Config"
 );
 expect_true(
-    str_contains($help_source, "ทุก Role เข้า Config เพื่อเปลี่ยนรหัสผ่านของตนเองได้")
+    str_contains($login_source, '$_SESSION["login_feedback"] = [')
+    && str_contains($login_source, 'unset($_SESSION["login_csrf_token"]);')
+    && str_contains($login_source, 'header("Location: login.php");')
+    && str_contains($login_source, '$_SESSION["login_device_failed_attempts"]')
+    && str_contains($login_source, '$_SESSION["login_device_lock_until"]')
+    && !str_contains($login_source, '$recent_ip_failures')
+    && !str_contains($login_source, '$new_attempt_count = (int) $user["failed_login_attempts"] + 1')
+    && str_contains($login_source, "switching users cannot submit stale credentials"),
+    "failed login uses Post/Redirect/Get and one browser-scoped counter across usernames"
+);
+expect_true(
+    substr_count($config_source, "failed_login_attempts = 0, lock_until = NULL") >= 2
+    && substr_count($config_source, 'autocomplete="new-password"') >= 5,
+    "password updates clear account locks and password fields resist browser autofill"
+);
+expect_true(
+    str_contains($help_source, "ทุก Role ใช้ Account Settings")
     && str_contains($system_overview_source, "ไม่มีหน้า Create Account หรือ Self-registration")
     && str_contains($security_permissions_source, "ไม่มี Public Registration")
     && str_contains($database_reference_source, "Legacy compatibility")
@@ -199,6 +263,14 @@ expect_true(
     str_contains($header_source, "ออกจากระบบ")
     && str_contains($header_source, "logout_csrf_token"),
     "shared header renders a protected Thai logout action"
+);
+expect_true(
+    str_contains($header_source, '.topbar { position: fixed; top: 0; right: 0; left: 0; z-index: 1040; height: 82px;')
+    && str_contains($header_source, '.brand-mark { width: 46px; height: 46px;')
+    && str_contains($header_source, '.brand-title { color: #f8fafc; font-size: 1.22rem;')
+    && str_contains($header_source, '.profile-avatar { width: 50px; height: 50px;')
+    && str_contains($header_source, '.profile-username { color: #f8fafc; font-size: 1.05rem;'),
+    "shared header enlarges branding and profile identity while retaining mobile sizing"
 );
 expect_true(
     !str_contains($footer_source, "sidebar-help-link")
@@ -220,16 +292,32 @@ expect_true(
     "shared header loads page-specific Dashboard styles"
 );
 expect_true(
-    str_contains($dashboard_source, "ภาพรวมงาน IT / AV")
+    str_contains($dashboard_source, '>ภาพรวมงาน</h1>')
+    && str_contains($dashboard_source, '>ดูสถานะงานที่ต้องติดตามและงานล่าสุด</p>')
+    && !str_contains($dashboard_source, "ภาพรวมงาน IT / AV")
+    && str_contains($dashboard_source, '$dashboard_can_filter_team = current_role() === "ADMIN";')
     && str_contains($dashboard_source, "team-switch")
     && str_contains($dashboard_source, "งานที่ต้องติดตาม"),
-    "Dashboard emphasizes IT/AV scope and actionable work status"
+    "Dashboard uses team-scoped copy and reserves team switching for ADMIN"
 );
 expect_true(
     substr_count($dashboard_source, "<canvas") === 1
     && str_contains($dashboard_source, 'id="taskTrendChart"')
+    && str_contains($dashboard_source, 'dashboard-trend-widget')
+    && strpos($dashboard_source, '<div><h2 class="page-heading h5 fw-bold mb-1">แนวโน้มจำนวนงาน</h2>') < strpos($dashboard_source, '<h2 class="page-heading h5 fw-bold mb-1">งานที่ต้องติดตาม</h2>')
+    && str_contains($dashboard_css_source, ".dashboard-trend-widget .dashboard-chart")
     && !str_contains($dashboard_source, "summaryReportChart"),
-    "Dashboard keeps one necessary trend chart without duplicate status charts"
+    "Dashboard keeps one full-width trend chart above the follow-up work section"
+);
+expect_true(
+    str_contains($report_source, 'report-filter-title-icon')
+    && str_contains($report_source, '.report-filter-heading { display: flex;')
+    && str_contains($report_source, 'background: linear-gradient(120deg, #f8fbfe, #eaf3fb);')
+    && str_contains($dashboard_source, 'dashboard-filter-title-icon')
+    && str_contains($dashboard_source, 'dashboard-filter-fields')
+    && str_contains($dashboard_css_source, '.dashboard-filter-section-title')
+    && str_contains($dashboard_css_source, '.dashboard-filter-summary'),
+    "Report and Dashboard filters share polished modal hierarchy and responsive styling"
 );
 expect_true(
     !str_contains($dashboard_source, "dashboardInsightModal")
@@ -249,8 +337,11 @@ expect_true(
 expect_true(
     str_contains($report_source, 'class="report-toolbar')
     && str_contains($report_source, 'class="report-team-switch')
+    && str_contains($report_source, '<?php if ($report_can_filter_team): ?>')
+    && !str_contains($report_source, '<span class="report-team-link active"><i class="bi bi-people"></i>ทีม')
+    && str_contains($report_source, '<h1 class="page-heading h3 fw-bold mb-1">Report</h1>')
     && str_contains($report_source, 'id="reportSearchButton"'),
-    "Task List exposes team switching, active filters and an explicit search action"
+    "Report exposes team switching only to SUPER/ADMIN and keeps explicit search"
 );
 expect_true(
     str_contains($report_source, '$report_page_url')
@@ -288,30 +379,43 @@ expect_true(
 );
 expect_true(
     str_contains($task_input_source, 'id="taskCreateForm"')
-    && str_contains($task_input_source, 'class="task-form-guide')
+    && !str_contains($task_input_source, 'class="task-form-guide')
+    && str_contains($task_input_source, 'task-section-card task-image-section')
     && str_contains($task_input_source, 'id="submitTaskButton"')
     && str_contains($task_input_source, 'task_input.css'),
-    "Task Input presents a guided form with a clear submit action"
+    "Task Input presents a focused form without a redundant step guide"
 );
 expect_true(
-    str_contains($task_input_source, "task-form-guide-three")
-    && str_contains($task_input_source, 'name="work_description"')
-    && str_contains($task_input_source, 'name="work_action"')
-    && str_contains($task_input_source, 'id="itResolutionSection"')
-    && str_contains($task_input_source, 'id="itCategoryGroup"')
+    str_contains($task_input_source, 'task-page-heading-icon')
+    && str_contains($task_input_source, 'bi-clipboard2-plus-fill')
+    && str_contains($task_input_css_source, '.task-page-heading::before')
+    && str_contains($task_input_css_source, 'background: linear-gradient(125deg, #ffffff 0%, #f2f7fc 68%, #e7f2fc 100%);')
+    && str_contains($task_input_css_source, '.task-section-card .section-icon')
+    && str_contains($task_input_css_source, 'border-top: 3px solid #2780d4;'),
+    "Task Input uses a polished page hero, section cards and action hierarchy"
+);
+expect_true(
+    str_contains($task_input_source, 'id="avDetailsSection"')
     && str_contains($task_input_source, 'id="avEquipmentGuide"')
-    && str_contains($task_input_source, 'id="avWorkActionGroup"')
-    && str_contains($task_input_source, 'name="problem"')
-    && str_contains($task_input_source, 'name="solution"')
-    && str_contains($task_input_source, 'name="remark"')
+    && !str_contains($task_input_source, 'name="category"')
+    && !str_contains($task_input_source, 'name="work_action"')
+    && !str_contains($task_input_source, 'name="problem"')
+    && !str_contains($task_input_source, 'name="solution"')
+    && !str_contains($task_input_source, 'name="remark"')
+    && !str_contains($task_input_source, "task_problem_is_required")
+    && !str_contains($task_input_source, 'id="taskStatusSelectGroup"')
+    && str_contains($task_input_source, 'type="hidden" id="taskStatus"')
     && !str_contains($task_input_source, "problem_options.js"),
-    "Task Input separates IT problem-solving and AV event-operation fields"
+    "Task Input keeps IT creation basic and AV creation focused on equipment only"
 );
 expect_true(
     task_problem_is_required("IT", "")
     && !task_problem_is_required("IT", "เปิดเครื่องไม่ติด")
     && !task_problem_is_required("AV", "")
-    && task_workflow_status("IT", "", "pending", true) === "in_progress"
+    && task_workflow_status("IT", "", "pending", true) === "pending"
+    && task_workflow_status("IT", "", "in_progress", false) === "pending"
+    && task_workflow_status("IT", "", "pending", false, false, "", true) === "pending"
+    && task_workflow_status("IT", "แก้ไขแล้ว", "pending", false, false, "", false) === "completed"
     && task_workflow_status("IT", "เปลี่ยนสายไฟ", "in_progress") === "completed"
     && task_workflow_status("IT", "", "cancelled") === "cancelled"
     && task_workflow_status("IT", "มีวิธีแก้", "cancelled", false, true) === "cancelled"
@@ -319,7 +423,44 @@ expect_true(
     && task_workflow_status("AV", "", "pending", false, false, "ติดตั้งอุปกรณ์แล้ว") === "completed"
     && task_workflow_status("AV", "", "pending", false, false, "", true) === "completed"
     && task_workflow_status("AV", "", "cancelled") === "cancelled",
-    "IT and AV workflows derive in-progress/completed status automatically"
+    "IT uses pending/completed from Solution while AV keeps its existing workflow"
+);
+expect_true(
+    str_contains($task_input_source, 'name="equipment_id[]"')
+    && str_contains($task_input_source, 'name="equipment_quantity[')
+    && str_contains($report_source, "task_equipments")
+    && str_contains($report_source, 'id="reportEditEquipmentGroup"')
+    && !str_contains($task_input_source, "taskTitleHistoryItems")
+    && !str_contains($task_input_source, "taskTitleHistoryMenu")
+    && !str_contains($task_input_source, "fillCurrentFinishTime")
+    && !str_contains($task_edit_source, "fillCurrentFinishTime")
+    && !str_contains($report_source, "fillCurrentFinishTime"),
+    "AV equipment is structured, title is plain text and finish time is never auto-filled"
+);
+expect_true(
+    str_contains($task_input_source, '"display_name" => "จอโปรเจ็คเตอร์"')
+    && str_contains($task_input_source, '"display_name" => "จอ LED"')
+    && str_contains($task_input_source, '"display_name" => "ไมค์ลอย"')
+    && str_contains($task_input_source, '"display_name" => "เครื่องเสียงของทางโรงแรม"')
+    && str_contains($task_input_source, 'id="equipmentPicker"')
+    && str_contains($task_input_source, 'data-equipment-row')
+    && str_contains($task_input_source, 'data-equipment-id')
+    && str_contains($task_input_source, 'data-quantity-action="decrease"')
+    && str_contains($task_input_source, 'data-quantity-action="increase"')
+    && str_contains($task_input_source, 'const existingRow = equipmentRows.querySelector')
+    && str_contains($task_input_source, 'quantity.value = Math.max(1, Number(quantity.value) || 1) + 1')
+    && !str_contains($task_input_source, 'quick_add_equipment')
+    && !str_contains($task_input_source, 'addEquipmentMasterModal')
+    && !str_contains($task_input_source, 'id="addEquipmentRow"')
+    && !str_contains($task_input_source, 'type="checkbox" name="equipment_id[]"')
+    && !str_contains($task_input_source, 'otherEquipment')
+    && !str_contains($task_input_source, 'other_equipment')
+    && !str_contains($task_input_source, 'อื่นๆ ระบุ')
+    && !str_contains($task_input_source, 'name="work_description"')
+    && !str_contains($task_input_source, 'รายละเอียด Event / งาน')
+    && !str_contains($config_source, "equipment")
+    && !str_contains($config_source, "Equipment"),
+    "AV Task Input uses a fixed dropdown, merges repeated choices and adjusts selected quantities"
 );
 expect_true(
     str_contains($report_source, 'id="reportEditSolution"')
@@ -333,6 +474,22 @@ expect_true(
     "Report Edit shows read-only USER status, preserves admin controls and scrolls internally"
 );
 expect_true(
+    str_contains($report_source, 'report-edit-title-icon')
+    && str_contains($report_source, 'report-edit-section--primary')
+    && str_contains($report_source, 'report-edit-section--details')
+    && str_contains($report_source, 'report-edit-section--time')
+    && str_contains($report_source, '.report-edit-section-heading { display: flex;')
+    && str_contains($report_source, '.report-edit-modal #reportEditEquipmentGroup'),
+    "Report Edit modal uses polished headers, semantic section cards and focused controls"
+);
+expect_true(
+    str_contains($report_source, 'data-bs-target="#reportEditTaskModal" data-edit-task-id=')
+    && str_contains($report_source, 'if (!window.bootstrap?.Modal)')
+    && str_contains($report_source, 'window.addEventListener("load", () => openEditModal(task, currentModal), { once: true });')
+    && str_contains($report_source, 'window.bootstrap.Modal.getOrCreateInstance(modalElement)'),
+    "Report Edit buttons retain a Bootstrap fallback and wait until the modal runtime is ready"
+);
+expect_true(
     str_contains($task_input_source, 'record_task_activity(')
     && str_contains($task_edit_source, 'record_task_update_activities(')
     && str_contains($activity_source, '"status_changed"')
@@ -344,8 +501,13 @@ expect_true(
 expect_true(
     str_contains($task_input_source, 'id="taskImagePreview"')
     && str_contains($task_input_source, "URL.createObjectURL")
-    && str_contains($task_input_source, "files.length > 5"),
-    "Task Input previews and validates image attachments before upload"
+    && str_contains($task_input_source, "files.length > 5")
+    && !str_contains($task_input_source, 'class="task-form-guide')
+    && str_contains($task_input_source, 'task-section-card task-image-section')
+    && strpos($task_input_source, 'task-section-card task-image-section') < strpos($task_input_source, 'id="avDetailsSection"')
+    && strpos($task_input_source, 'task-section-card task-image-section') < strpos($task_input_source, 'class="col-xl-4"')
+    && str_contains($task_input_source, 'col-6 col-md-4 col-lg-3'),
+    "Task Input removes the step guide and places responsive image attachments below primary task data"
 );
 expect_true(
     str_contains($task_input_source, "&task_id=")

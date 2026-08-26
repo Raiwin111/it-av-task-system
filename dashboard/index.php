@@ -26,8 +26,9 @@ function dashboard_filter_date(string $value, bool $end_of_day = false): ?string
     return null;
 }
 
-// Dashboard team scope: SUPER/ADMIN may inspect all teams; USER stays inside its assigned team.
-$dashboard_can_filter_team = can_manage_all_tasks();
+// Dashboard team switching is an ADMIN-only overview. Other roles stay inside
+// their assigned team even when they can manage tasks elsewhere.
+$dashboard_can_filter_team = current_role() === "ADMIN";
 $dashboard_requested_team = is_string($_GET["team"] ?? null) ? $_GET["team"] : "";
 $dashboard_requested_status = is_string($_GET["status"] ?? null) ? $_GET["status"] : "";
 $dashboard_requested_category = is_string($_GET["category"] ?? null) ? $_GET["category"] : "";
@@ -287,8 +288,8 @@ require_once __DIR__ . "/../includes/app_header.php";
 <main class="main-content flex-grow-1 p-4 p-lg-5">
     <div class="d-flex flex-column flex-lg-row align-items-lg-end justify-content-between gap-3 mb-4">
         <div>
-            <h1 class="page-heading h3 fw-bold mb-1">ภาพรวมงาน IT / AV</h1>
-            <p class="text-muted mb-0">ดูสถานะงานที่ต้องติดตามและงานล่าสุด · <?php echo htmlspecialchars($dashboard_scope_label, ENT_QUOTES, "UTF-8"); ?></p>
+            <h1 class="page-heading h3 fw-bold mb-1">ภาพรวมงาน</h1>
+            <p class="text-muted mb-0">ดูสถานะงานที่ต้องติดตามและงานล่าสุด</p>
         </div>
         <div class="dashboard-header-actions d-flex flex-wrap gap-2">
             <button class="btn dashboard-filter-button" type="button" data-bs-toggle="modal" data-bs-target="#dashboardFilterModal" aria-label="เปิดตัวกรองแดชบอร์ด" title="เปิดตัวกรองแดชบอร์ด">
@@ -305,12 +306,13 @@ require_once __DIR__ . "/../includes/app_header.php";
         </div>
     <?php endif; ?>
 
-    <section class="dashboard-toolbar mb-4" aria-label="เลือกทีมและตัวกรองปัจจุบัน">
+    <?php if ($dashboard_can_filter_team || $dashboard_active_filter_labels): ?>
+    <section class="dashboard-toolbar mb-4" aria-label="<?php echo $dashboard_can_filter_team ? "เลือกทีมและตัวกรองปัจจุบัน" : "ตัวกรองปัจจุบัน"; ?>">
         <div class="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-3">
+            <?php if ($dashboard_can_filter_team): ?>
             <div>
                 <div class="small fw-bold text-muted mb-2">เลือกภาพรวมตามทีม</div>
                 <nav class="team-switch" aria-label="เลือกทีม">
-                    <?php if ($dashboard_can_filter_team): ?>
                         <?php
                         $all_team_query = $dashboard_filter_query;
                         unset($all_team_query["team"]);
@@ -325,12 +327,9 @@ require_once __DIR__ . "/../includes/app_header.php";
                                 <span class="team-count"><?php echo $dashboard_team_counts[$department_option]["total"] ?? 0; ?></span>
                             </a>
                         <?php endforeach; ?>
-                    <?php else: ?>
-                        <?php $own_team = (string) ($_SESSION["department"] ?? "-"); ?>
-                        <span class="team-switch-link active"><i class="bi <?php echo $own_team === "AV" ? "bi-camera-video" : "bi-pc-display"; ?>"></i>ทีม <?php echo htmlspecialchars($own_team, ENT_QUOTES, "UTF-8"); ?><span class="team-count"><?php echo $dashboard_counts["total"]; ?></span></span>
-                    <?php endif; ?>
                 </nav>
             </div>
+            <?php endif; ?>
             <?php if ($dashboard_active_filter_labels): ?>
                 <div class="d-flex flex-wrap gap-2">
                     <?php foreach ($dashboard_active_filter_labels as $filter_label): ?>
@@ -341,19 +340,25 @@ require_once __DIR__ . "/../includes/app_header.php";
             <?php endif; ?>
         </div>
     </section>
+    <?php endif; ?>
 
     <div class="modal fade dashboard-filter-modal" id="dashboardFilterModal" tabindex="-1" aria-labelledby="dashboardFilterHeading" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <form method="get" action="">
                     <div class="modal-header px-4 py-3">
-                        <div>
-                            <h2 class="modal-title h5 fw-bold page-heading mb-1" id="dashboardFilterHeading"><i class="bi bi-funnel me-2"></i>ตัวกรองแดชบอร์ด</h2>
-                            <p class="small text-muted mb-0">ใช้ตัวกรองชุดเดียวกันกับ KPI กราฟ และรายการงาน โดยช่วงวันที่อิงวันเริ่มดำเนินการ</p>
+                        <div class="dashboard-filter-heading-wrap d-flex align-items-center gap-3">
+                            <span class="dashboard-filter-title-icon d-inline-flex align-items-center justify-content-center" aria-hidden="true"><i class="bi bi-funnel-fill"></i></span>
+                            <div>
+                                <h2 class="modal-title h5 fw-bold page-heading mb-1" id="dashboardFilterHeading">ตัวกรองแดชบอร์ด</h2>
+                                <p class="small text-muted mb-0">ใช้ตัวกรองชุดเดียวกันกับ KPI กราฟ และรายการงาน โดยช่วงวันที่อิงวันเริ่มดำเนินการ</p>
+                            </div>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
                     </div>
                     <div class="modal-body p-4">
+                        <section class="dashboard-filter-fields" aria-label="เงื่อนไขตัวกรองแดชบอร์ด">
+                        <h3 class="dashboard-filter-section-title"><i class="bi bi-card-checklist"></i>เงื่อนไขงานและช่วงเวลา</h3>
                         <div class="row g-3">
                             <?php if ($dashboard_can_filter_team): ?>
                                 <div class="col-md-4">
@@ -365,13 +370,8 @@ require_once __DIR__ . "/../includes/app_header.php";
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
-                            <?php else: ?>
-                                <div class="col-md-4">
-                                    <label class="form-label">ทีม</label>
-                                    <div class="form-control bg-light d-flex align-items-center"><i class="bi bi-people me-2 text-primary"></i><?php echo htmlspecialchars($_SESSION["department"] ?? "-", ENT_QUOTES, "UTF-8"); ?></div>
-                                </div>
                             <?php endif; ?>
-                            <div class="col-md-4">
+                            <div class="<?php echo $dashboard_can_filter_team ? "col-md-4" : "col-md-6"; ?>">
                                 <label class="form-label" for="dashboardStatus">สถานะ</label>
                                 <select class="form-select" id="dashboardStatus" name="status">
                                     <option value="">ทุกสถานะ</option>
@@ -380,7 +380,7 @@ require_once __DIR__ . "/../includes/app_header.php";
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="<?php echo $dashboard_can_filter_team ? "col-md-4" : "col-md-6"; ?>">
                                 <label class="form-label" for="dashboardCategory">ประเภทปัญหา</label>
                                 <select class="form-select" id="dashboardCategory" name="category">
                                     <option value="">ทุกประเภท</option>
@@ -399,7 +399,8 @@ require_once __DIR__ . "/../includes/app_header.php";
                             </div>
                         </div>
                         <div id="dashboardDateHelp" class="form-text mt-2">รูปแบบวันที่ พ.ศ. เช่น 24/07/2569</div>
-                        <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mt-4 pt-3 border-top">
+                        </section>
+                        <div class="dashboard-filter-summary d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mt-3">
                             <div class="d-flex flex-wrap gap-2">
                                 <?php if ($dashboard_active_filter_labels): ?>
                                     <?php foreach ($dashboard_active_filter_labels as $filter_label): ?>
@@ -413,7 +414,7 @@ require_once __DIR__ . "/../includes/app_header.php";
                         </div>
                     </div>
                     <div class="modal-footer px-4 py-3">
-                        <a class="btn btn-outline-secondary me-auto" href="index.php"><i class="bi bi-arrow-counterclockwise me-1"></i>ล้างตัวกรอง</a>
+                        <a class="btn btn-outline-danger me-auto" href="index.php"><i class="bi bi-arrow-counterclockwise me-1"></i>ล้างตัวกรอง</a>
                         <button type="button" class="btn btn-light border" data-bs-dismiss="modal">ยกเลิก</button>
                         <button class="btn btn-primary" type="submit"><i class="bi bi-search me-1"></i>แสดงผล</button>
                     </div>
@@ -429,9 +430,18 @@ require_once __DIR__ . "/../includes/app_header.php";
         <div class="col-6 col-xl-3"><article class="card summary-card h-100"><div class="card-body d-flex align-items-center"><div class="metric-icon metric-completed d-inline-flex align-items-center justify-content-center me-3"><i class="bi bi-check-circle-fill"></i></div><div><div class="metric-label">เสร็จสิ้น</div><div class="metric-value fw-bold"><?php echo $dashboard_counts["completed"]; ?> <span class="fs-6">งาน</span></div></div></div></article></div>
     </section>
 
-    <section class="row g-4 mb-5" aria-label="สถานะและแนวโน้มงาน">
-        <div class="col-lg-5">
-            <article class="card monitor-widget h-100">
+    <section class="row g-4 mb-5" aria-label="แนวโน้มและสถานะงาน">
+        <div class="col-12">
+            <article class="card monitor-widget dashboard-trend-widget">
+                <div class="card-header py-3 px-4 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+                    <div><h2 class="page-heading h5 fw-bold mb-1">แนวโน้มจำนวนงาน</h2><p class="text-muted small mb-0" id="trendChartSubtitle">สัปดาห์ปัจจุบัน</p></div>
+                    <select class="form-select form-select-sm w-auto" id="trendRange" aria-label="เลือกระยะเวลาสถิติงาน"><option value="day">รายวัน</option><option value="week">รายสัปดาห์</option><option value="month">รายเดือน</option><option value="year">รายปี</option></select>
+                </div>
+                <div class="card-body"><div class="dashboard-chart"><canvas id="taskTrendChart"></canvas></div></div>
+            </article>
+        </div>
+        <div class="col-12">
+            <article class="card monitor-widget">
                 <div class="card-header py-3 px-4"><h2 class="page-heading h5 fw-bold mb-1">งานที่ต้องติดตาม</h2><p class="text-muted small mb-0"><?php echo htmlspecialchars($dashboard_scope_label, ENT_QUOTES, "UTF-8"); ?></p></div>
                 <div class="card-body p-4">
                     <div class="active-work-callout d-flex align-items-center justify-content-between gap-3 p-3 mb-4">
@@ -453,15 +463,6 @@ require_once __DIR__ . "/../includes/app_header.php";
                     <?php endforeach; ?>
                     <a class="btn btn-outline-primary w-100 mt-4" href="<?php echo htmlspecialchars($dashboard_report_url, ENT_QUOTES, "UTF-8"); ?>">เปิดรายการงานตามตัวกรอง</a>
                 </div>
-            </article>
-        </div>
-        <div class="col-lg-7">
-            <article class="card monitor-widget h-100">
-                <div class="card-header py-3 px-4 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
-                    <div><h2 class="page-heading h5 fw-bold mb-1">แนวโน้มจำนวนงาน</h2><p class="text-muted small mb-0" id="trendChartSubtitle">สัปดาห์ปัจจุบัน</p></div>
-                    <select class="form-select form-select-sm w-auto" id="trendRange" aria-label="เลือกระยะเวลาสถิติงาน"><option value="day">รายวัน</option><option value="week">รายสัปดาห์</option><option value="month">รายเดือน</option><option value="year">รายปี</option></select>
-                </div>
-                <div class="card-body"><div class="dashboard-chart"><canvas id="taskTrendChart"></canvas></div></div>
             </article>
         </div>
     </section>

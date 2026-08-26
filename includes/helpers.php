@@ -72,7 +72,7 @@ function task_workflow_status(
     if ($department === "IT") {
         return !in_array(trim($solution), ["", "-"], true)
             ? "completed"
-            : "in_progress";
+            : "pending";
     }
 
     if ($department === "AV") {

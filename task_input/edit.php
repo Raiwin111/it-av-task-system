@@ -95,11 +95,6 @@ if (($_SERVER["REQUEST_METHOD"] ?? "GET") === "POST" && !hash_equals($task_form_
         $work_action,
         $finish_time !== null
     );
-    if ($department === "IT" && $status === "in_progress") {
-        $finish_input_started = false;
-        $finish_time = null;
-    }
-    if ($status === "completed" && !$finish_time && !$finish_input_started) $finish_time = date("Y-m-d H:i:s");
     [$prepared_images, $image_error] = prepare_task_image_uploads();
     $remark = trim(edit_post_string("remark"));
     $location = $location === "" ? "-" : $location;
@@ -374,31 +369,6 @@ require_once __DIR__ . "/../includes/app_header.php";
     const autoStatusHint = document.getElementById("editAutoStatusHint");
     const canControlStatus = <?php echo json_encode($can_control_status); ?>;
 
-    const fillCurrentFinishTime = () => {
-        const now = new Date();
-        const finishDate = document.getElementById("finishDate");
-        const finishTime = document.getElementById("finishWorkTime");
-        const dateValue = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear() + 543}`;
-        const timeValue = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-        if (finishDate && !finishDate.value) {
-            if (finishDate._flatpickr) finishDate._flatpickr.setDate(dateValue, false, "d/m/Y");
-            else finishDate.value = dateValue;
-        }
-        if (finishTime && !finishTime.value) {
-            if (finishTime._flatpickr) finishTime._flatpickr.setDate(timeValue, false, "H:i");
-            else finishTime.value = timeValue;
-        }
-    };
-
-    const clearFinishTime = () => {
-        const finishDate = document.getElementById("finishDate");
-        const finishTime = document.getElementById("finishWorkTime");
-        if (finishDate?._flatpickr) finishDate._flatpickr.clear(false);
-        else if (finishDate) finishDate.value = "";
-        if (finishTime?._flatpickr) finishTime._flatpickr.clear(false);
-        else if (finishTime) finishTime.value = "";
-    };
-
     const updateITEditWorkflow = () => {
         const isIT = departmentControl?.value === "IT";
         const isAV = departmentControl?.value === "AV";
@@ -413,13 +383,10 @@ require_once __DIR__ . "/../includes/app_header.php";
         autoStatusGroup?.classList.toggle("d-none", canControlStatus);
         if (isIT && hasSolution && !canControlStatus) {
             statusControl.value = "completed";
-            fillCurrentFinishTime();
         } else if (isIT && !canControlStatus && statusControl.value !== "cancelled") {
-            statusControl.value = "in_progress";
-            clearFinishTime();
+            statusControl.value = "pending";
         } else if (isAV && !canControlStatus && statusControl.value !== "cancelled") {
             statusControl.value = hasWorkAction || hasFinishTime ? "completed" : "in_progress";
-            if (statusControl.value === "completed" && hasWorkAction && !hasFinishTime) fillCurrentFinishTime();
         }
         if (!canControlStatus && autoStatusBadge) {
             const statusMeta = {
@@ -446,11 +413,6 @@ require_once __DIR__ . "/../includes/app_header.php";
     finishDateControl?.addEventListener("change", updateITEditWorkflow);
     finishTimeControl?.addEventListener("change", updateITEditWorkflow);
     updateITEditWorkflow();
-
-    statusControl?.addEventListener("change", () => {
-        if (statusControl.value !== "completed") return;
-        fillCurrentFinishTime();
-    });
 
     const taskImageInput = document.getElementById("taskImages");
     const taskImagePreview = document.getElementById("taskImagePreview");
