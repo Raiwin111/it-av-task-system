@@ -1,0 +1,36 @@
+# Installed dependencies and local tooling
+/vendor/
+/tools/composer.phar
+
+# Machine-local credentials and generated secrets
+/config/db.local.php
+/config/.remember_me_secret
+/backups/*
+!/backups/.htaccess
+
+# User uploads (keep directory guards/placeholders)
+/uploads/profile/*
+!/uploads/profile/.gitkeep
+!/uploads/profile/.htaccess
+/uploads/tasks/*
+!/uploads/tasks/.gitkeep
+!/uploads/tasks/.htaccess
+
+# Local editor/OS files
+.DS_Store
+Thumbs.db
+*.log
+
+# Editor/AI history snapshots and workspace files (contain old dev versions)
+/.history/
+/.vscode/
+/.codex/
+/.zcode/
+auth/workspace.code-workspace
+/.vscode/*
+*.code-workspace
+
+# One-off local scratch files
+/_*.php
+/_*.js
+/รูปicon login.png

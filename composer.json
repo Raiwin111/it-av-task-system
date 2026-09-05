@@ -1,0 +1,9 @@
+{
+    "name": "internal/it-av-task-system",
+    "description": "Internal IT and AV task management system.",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "dompdf/dompdf": "^3.1"
+    }
+}
