@@ -1,4 +1,4 @@
-# IT / AV Task Management System — Portfolio / Demo Template
+# IT / AV Task Management System —/ Demo Template
 
 ระบบจัดการงาน (Task Management System) ต้นแบบสำหรับทีมงานปฏิบัติการ พัฒนาด้วย PHP แบบ Server-rendered + MySQL
 ออกแบบมาให้เหมาะกับทีม **IT / AV** โดยตรง และปรับใช้กับทีมลักษณะเดียวกันได้ทันที เช่น **Maintenance, Facilities, Housekeeping Operations** — เปลี่ยนรายการทีม สถานที่ และหมวดปัญหาได้จากหน้า Config โดยไม่ต้องแก้โค้ด
